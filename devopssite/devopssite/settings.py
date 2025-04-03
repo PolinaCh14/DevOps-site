@@ -19,7 +19,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-AUTH_USER_MODEL = 'authentication.CustomUser'
+AUTH_USER_MODEL = 'users.User'
+
+# STATIC_URL = '/static/css'
+
+# AUTH_USER_MODEL = 'users.CustomUser'
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,10 +53,15 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'devopssite.urls'
 
+STATIC_URL = '/static'
+STATICFILES_DIRS = (
+  os.path.join(BASE_DIR, 'static/'),
+)
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

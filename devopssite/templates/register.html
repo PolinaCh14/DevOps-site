@@ -1,0 +1,66 @@
+{% extends "header.html" %}
+{% block content %}
+<div class="register-container">
+    <form method="post" class="register-form" id="registerForm">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="Ім'я" required>
+        <div class="error-message" id="nameError">Будь ласка, введіть ім'я</div>
+
+        <input type="text" name="surname" placeholder="Прізвище" required>
+        <div class="error-message" id="surnameError">Будь ласка, введіть прізвище</div>
+
+        <input type="email" name="email" placeholder="Email" required>
+        <div class="error-message" id="emailError">Введіть правильний email</div>
+
+        <input type="password" name="password" placeholder="Пароль" required>
+        <div class="error-message" id="passwordError">Пароль обов'язковий</div>
+
+        <input type="text" name="phone" placeholder="Телефон" required>
+        <div class="error-message" id="phoneError">Введіть номер телефону</div>
+
+        <textarea name="about_me" placeholder="Про себе" rows="3"></textarea>
+
+       <select name="role_id" required>
+          <option value="2">Фрілансер</option>
+          <option value="3">Роботодавець</option>
+       </select>
+
+        <button type="submit">Зареєструватися</button>
+
+        <div class="auth-link">
+            Вже маєте акаунт? <a href="{% url 'users:login' %}">Увійдіть тут</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById('registerForm');
+
+    form.addEventListener('submit', function (e) {
+        let valid = true;
+
+        const fields = ['name', 'surname', 'email', 'password', 'phone', 'role_id'];
+
+        fields.forEach(field => {
+            const input = form.querySelector(`[name="${field}"]`);
+            const error = document.getElementById(`${field}Error`);
+
+            if (!input.value.trim()) {
+                input.classList.add('error');
+                error.style.display = 'block';
+                valid = false;
+            } else {
+                input.classList.remove('error');
+                error.style.display = 'none';
+            }
+        });
+
+        if (!valid) e.preventDefault();
+    });
+
+</script>
+{% endblock %}
+
+
+
+
