@@ -3,6 +3,13 @@
 <div class="register-container">
     <form method="post" class="register-form" id="registerForm">
         {% csrf_token %}
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
         <input type="email" name="email" placeholder="Email" required>
         <div class="error-message" id="emailError">Введіть правильний email</div>
 
@@ -17,32 +24,6 @@
     </form>
 </div>
 
-<script>
-    const form = document.getElementById('registerForm');
-
-    form.addEventListener('submit', function (e) {
-        let valid = true;
-
-        const fields = ['name', 'surname', 'email', 'password', 'phone', 'role_id'];
-
-        fields.forEach(field => {
-            const input = form.querySelector(`[name="${field}"]`);
-            const error = document.getElementById(`${field}Error`);
-
-            if (!input.value.trim()) {
-                input.classList.add('error');
-                error.style.display = 'block';
-                valid = false;
-            } else {
-                input.classList.remove('error');
-                error.style.display = 'none';
-            }
-        });
-
-        if (!valid) e.preventDefault();
-    });
-
-</script>
 {% endblock %}
 
 

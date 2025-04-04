@@ -26,7 +26,7 @@
                 {% endif %}
                 {% if user.is_authenticated %}
                 <nav class="div-nav__nav">
-                    <a href="" class="div-nav__nav-link">Profile</a>
+                    <a href="{% url 'users:profile' %}" class="div-nav__nav-link">Профіль</a>
                 </nav>
                 <nav class="div-nav__nav">
                     <a href="" class="div-nav__nav-link">Notes</a>

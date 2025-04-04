@@ -1,0 +1,22 @@
+{% extends "header.html" %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <label>Ім’я:</label>
+  <input type="text" name="name" value="{{ user.name }}"><br>
+
+  <label>Прізвище:</label>
+  <input type="text" name="surname" value="{{ user.surname }}"><br>
+
+  <label>Телефон:</label>
+  <input type="text" name="phone" value="{{ user.phone }}"><br>
+
+  <label>Про себе:</label>
+  <textarea name="about_me">{{ user.about_me }}</textarea><br>
+
+  <label>Фото профілю (URL):</label>
+  <input type="text" name="profile_picture" value="{{ user.profile_picture }}"><br>
+
+  <button type="submit">Зберегти зміни</button>
+</form>
+{% endblock %}

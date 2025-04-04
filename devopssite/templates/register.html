@@ -3,6 +3,13 @@
 <div class="register-container">
     <form method="post" class="register-form" id="registerForm">
         {% csrf_token %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
         <input type="text" name="name" placeholder="Ім'я" required>
         <div class="error-message" id="nameError">Будь ласка, введіть ім'я</div>
 
