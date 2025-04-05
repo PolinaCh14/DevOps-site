@@ -1,0 +1,31 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    background-color: var(--background-color);
+
+}
+
+main {
+    width: 100%;
+    height: 100%;
+}
+
+:root {
+    --primary-color: #13330F;
+    --secondary-color: #335C2E;
+    --background-color:#B1C2AE;
+    --primary-text-color: #FFFFFF;
+    --light-text-color: #fefefe;
+    --secondary-text-color: #698F64;
+    --line-color: #4C7DF9;
+    --main-letter: italic;
+    --link-text-color: #87be67;
+    --edit-error-text-color:#15c1ff;
+    --hint-color: #6100C9;
+}

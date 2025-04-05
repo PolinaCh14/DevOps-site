@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> DevOpsIK</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static '/css/index.css' %}">
+</head>
+<body class="tea-shop-body">
+    <header class="header">
+        <div class="div-nav">
+            <div class="div-nav__logo-letter">
+                <a href="" class="logo-letter">DevOpsIK</a>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <div class="div-nav__ham-line"></div>
+                <div class="div-nav__ham-line"></div>
+                <div class="div-nav__ham-line"></div>
+            </div>
+            <div class="div-nav__inform" id="nav-links">
+                {% if not user.is_authenticated %}
+                <nav class="div-nav__nav">
+                    <a href="{% url 'users:register' %}" class="div-nav__nav-link">Увійти</a>
+                </nav>
+                {% endif %}
+                {% if user.is_authenticated %}
+                <nav class="div-nav__nav">
+                    <a href="{% url 'users:profile' %}" class="div-nav__nav-link">Профіль</a>
+                </nav>
+                <nav class="div-nav__nav">
+                    <a href="" class="div-nav__nav-link">Notes</a>
+                </nav>
+                <nav class="div-nav__nav">
+                    <a href="{% url 'users:logout' %}" class="div-nav__nav-link">Вийти</a>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    {% load static %}
+    <script src="{% static 'js/header.js' %}"></script>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+</body>
+</html>

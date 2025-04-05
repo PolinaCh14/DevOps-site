@@ -1,0 +1,41 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<head>
+    <title>Профіль користувача</title>
+</head>
+<body>
+    <div class="profile-container">
+        <h1>Профіль</h1>
+
+        <div class="menu">
+            <a href="#">Мої проєкти</a>
+            <a href="#">Мої запити на співпрацю</a>
+        </div>
+
+        <div class="profile-card">
+            <div class="profile-main">
+                <div class="profile-picture">
+                    {% if profile_picture == None %}
+                        <img src="{{ profile_picture.url }}" alt="Фото профілю1">
+                    {% else %}
+                        <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю">
+                    {% endif %}
+                </div>
+
+                <div class="profile-info">
+                    <p><strong>Ім’я:</strong> {{ name }}</p>
+                    <p><strong>Прізвище:</strong> {{ surname }}</p>
+                    <p><strong>Email:</strong> {{ email }}</p>
+                    <p><strong>Телефон:</strong> {{ phone }}</p>
+                    <p><strong>Роль:</strong> {{ role }}</p>
+
+                    <div class="update-link">
+                        <a href="{% url 'users:update_profile' %}">Оновити профіль</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
