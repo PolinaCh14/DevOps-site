@@ -1,22 +1,40 @@
 {% extends "header.html" %}
 {% block content %}
-<form method="post">
-  {% csrf_token %}
-  <label>Ім’я:</label>
-  <input type="text" name="name" value="{{ user.name }}"><br>
+<body>
+    <div class="form-container">
+        <h2>Оновлення профілю</h2>
+        <form method="post">
+            {% csrf_token %}
 
-  <label>Прізвище:</label>
-  <input type="text" name="surname" value="{{ user.surname }}"><br>
+            <div class="form-group">
+                <label for="name">Ім’я:</label>
+                <input type="text" id="name" name="name" value="{{ user.name }}">
+            </div>
 
-  <label>Телефон:</label>
-  <input type="text" name="phone" value="{{ user.phone }}"><br>
+            <div class="form-group">
+                <label for="surname">Прізвище:</label>
+                <input type="text" id="surname" name="surname" value="{{ user.surname }}">
+            </div>
 
-  <label>Про себе:</label>
-  <textarea name="about_me">{{ user.about_me }}</textarea><br>
+            <div class="form-group">
+                <label for="phone">Телефон:</label>
+                <input type="text" id="phone" name="phone" value="{{ user.phone }}">
+            </div>
 
-  <label>Фото профілю (URL):</label>
-  <input type="text" name="profile_picture" value="{{ user.profile_picture }}"><br>
+            <div class="form-group">
+                <label for="about_me">Про себе:</label>
+                <textarea id="about_me" name="about_me">{{ user.about_me }}</textarea>
+            </div>
 
-  <button type="submit">Зберегти зміни</button>
-</form>
+            <div class="form-group">
+                <label for="profile_picture">Фото профілю (URL):</label>
+                <input type="text" id="profile_picture" name="profile_picture" value="{{ user.profile_picture }}">
+            </div>
+
+            <div class="form-group" style="text-align:center;">
+                <button type="submit">Зберегти зміни</button>
+            </div>
+        </form>
+    </div>
+</body>
 {% endblock %}
