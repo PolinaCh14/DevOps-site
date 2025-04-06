@@ -1,0 +1,71 @@
+{% extends 'header.html' %}
+
+{% block content %}
+    <body>
+<div class="main-wrapper">
+
+    {% include "user_menu.html" %}
+
+    <h1>Усі проєкти</h1>
+
+    <div class="container_for_project">
+        <!-- Форма фільтрації -->
+        <div class="filter-sidebar">
+            <form method="get" action="{% url 'projects:user_projects_search_view' %}">
+                <label>Назва проєкту:</label><br>
+                <input type="text" name="name" value="{{ request.GET.name }}"><br><br>
+
+                <label>Скіл (назва):</label><br>
+                <select name="skill">
+                    <option value="">---</option>
+                    {% for sk in skills %}
+                        <option value="{{ sk.id }}" {% if request.GET.skill == sk.id|stringformat:"s" %}selected{% endif %}>
+                            {{ sk.skill }}
+                        </option>
+                    {% endfor %}
+                </select><br><br>
+
+                <label>Статус:</label><br>
+                <select name="status">
+                    <option value="">---</option>
+                    {% for stat in statuses %}
+                        <option value="{{ stat.id }}" {% if request.GET.status == stat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ stat.status }}
+                        </option>
+                    {% endfor %}
+                </select><br><br>
+
+
+                <label>Ціна:</label><br>
+                <select name="price_filter">
+                    <option value="">---</option>
+                    <option value="lt" {% if request.GET.price_filter == "lt" %}selected{% endif %}>&lt; Менше</option>
+                    <option value="lte" {% if request.GET.price_filter == "lte" %}selected{% endif %}>&le; Менше або дорівнює</option>
+                    <option value="eq" {% if request.GET.price_filter == "eq" %}selected{% endif %}>= Дорівнює</option>
+                    <option value="gte" {% if request.GET.price_filter == "gte" %}selected{% endif %}>&ge; Більше або дорівнює</option>
+                    <option value="gt" {% if request.GET.price_filter == "gt" %}selected{% endif %}>&gt; Більше</option>
+                </select><br>
+                <input type="number" step="0.01" name="price" value="{{ request.GET.price }}"><br><br>
+
+                <button type="submit">Фільтрувати</button>
+            </form>
+            <a href="" class="btn-view-two">Створити проєкт</a>
+        </div>
+
+        <!-- Список проєктів -->
+        <div class="project-list">
+            {% for project in projects %}
+                <div class="project-card">
+                    <div class="project-title">{{ project.name }}</div>
+                    <div class="project-status">{{ project.status.status }}</div>
+                    <a href="{% url 'projects:user_project' project.id %}" class="btn-view">Переглянути проєкт</a>
+                </div>
+            {% empty %}
+                <p>Немає проєктів для відображення.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+</body>
+{% endblock %}

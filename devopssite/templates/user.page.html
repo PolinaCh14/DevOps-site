@@ -5,24 +5,17 @@
     <title>Профіль користувача</title>
 </head>
 <body>
-    <div class="profile-container">
-        <h1>Профіль</h1>
+<div class="profile-wrapper">
+    {% include "user_menu.html" %}
 
-        <div class="menu">
-            <a href="#">Мої проєкти</a>
-            <a href="#">Мої запити на співпрацю</a>
-        </div>
+    <div class="profile-container">
+        <h2>Профіль</h2>
 
         <div class="profile-card">
             <div class="profile-main">
                 <div class="profile-picture">
-                    {% if profile_picture == None %}
-                        <img src="{{ profile_picture.url }}" alt="Фото профілю1">
-                    {% else %}
-                        <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю">
-                    {% endif %}
+                    <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю">
                 </div>
-
                 <div class="profile-info">
                     <p><strong>Ім’я:</strong> {{ name }}</p>
                     <p><strong>Прізвище:</strong> {{ surname }}</p>
@@ -37,5 +30,6 @@
             </div>
         </div>
     </div>
+</div>
 </body>
 {% endblock %}

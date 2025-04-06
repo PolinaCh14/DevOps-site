@@ -1,0 +1,80 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<head>
+    <title>Профіль користувача</title>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <div class="profile-container">
+        <h2>Проєкт</h2>
+
+        <div class="project-container">
+            <h1>{{ project.name }}</h1>
+
+            <div class="field-value">
+                <span class="field-label">Опис:</span> {{ project.description }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Автор:</span> {{ project.user }}
+            </div>
+            {% if user.is_authenticated  %}
+            <div class="field-value">
+                <span class="field-label">Пошта:</span> {{ project.user.email }}
+            </div>
+            <div class="field-value">
+                <span class="field-label">Телефон:</span> {{ project.user.phone }}
+            </div>
+            {% endif %}
+            <div class="field-value">
+                <span class="field-label">Статус:</span> {{ project.status.status }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Дата створення:</span> {{ project.created_at }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Дата завершення:</span>
+                {{ project.end_at|default:"—" }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Виконання (Робочих днів):</span>
+                {{ project.execution|default:"—" }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Бюджет:</span>
+                {{ project.price|default:"—" }} грн
+            </div>
+
+            <div class="skills">
+                <span class="field-label">Скіли проєкту:</span><br>
+                {% if skills %}
+                    {% for skill in skills %}
+                        <span class="skill-item">{{ skill.id_skill.skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p>Немає вказаних скілів.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="project-actions">
+            {% if user.is_authenticated and user.role.id == 2 %}
+            <a href="" class="btn btn-request">Подати заявку на співпрацю</a>
+            {% else %}
+            <h4>Для того, щоб мати змогу подати заявку треба бути зареєстрованим фрілансером</h4>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+</body>
+{% endblock %}
+
+<body>
+
+</body>
