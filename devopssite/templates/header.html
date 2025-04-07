@@ -11,7 +11,7 @@
     <header class="header">
         <div class="div-nav">
             <div class="div-nav__logo-letter">
-                <a href="" class="logo-letter">DevOpsIK</a>
+                <a href="/" class="logo-letter">DevOpsIK</a>
             </div>
             <div class="hamburger" id="hamburger">
                 <div class="div-nav__ham-line"></div>
@@ -19,6 +19,9 @@
                 <div class="div-nav__ham-line"></div>
             </div>
             <div class="div-nav__inform" id="nav-links">
+                <nav class="div-nav__nav">
+                    <a href="{% url 'projects:projects_search_view' %}" class="div-nav__nav-link">Проєкти</a>
+                </nav>
                 {% if not user.is_authenticated %}
                 <nav class="div-nav__nav">
                     <a href="{% url 'users:register' %}" class="div-nav__nav-link">Увійти</a>

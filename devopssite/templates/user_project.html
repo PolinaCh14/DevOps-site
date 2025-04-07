@@ -1,0 +1,78 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<head>
+    <title>Профіль користувача</title>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- Меню навігації зверху -->
+    {% include "user_menu.html" %}
+
+    <!-- Контейнер профілю -->
+    <div class="profile-container">
+        <h2>Проєкт</h2>
+
+        <div class="project-container">
+            <h1>{{ project.name }}</h1>
+
+            <div class="field-value">
+                <span class="field-label">Опис:</span> {{ project.description }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Автор:</span> {{ project.user }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Статус:</span> {{ project.status.status }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Дата створення:</span> {{ project.created_at }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Дата завершення:</span>
+                {{ project.end_at|default:"—" }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Виконання (Робочих днів):</span>
+                {{ project.execution|default:"—" }}
+            </div>
+
+            <div class="field-value">
+                <span class="field-label">Бюджет:</span>
+                {{ project.price|default:"—" }} грн
+            </div>
+
+            <div class="skills">
+                <span class="field-label">Скіли проєкту:</span><br>
+                {% if skills %}
+                    {% for skill in skills %}
+                        <span class="skill-item">{{ skill.id_skill.skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p>Немає вказаних скілів.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="project-actions">
+            {% if user.is_authenticated and user.id == project.user.id %}
+                <a href="{% url 'projects:update_project' project.id %}" class="btn btn-request">Оновити проєкт</a>
+                <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-request">Видалити проєкт</a>
+            {% endif %}
+            {% if project.status.id == 3 %}
+            <a href="" class="btn btn-request">Залиши оцінку співпраці</a>
+            {% endif %}
+    </div>
+
+</div>
+</body>
+{% endblock %}
+
+<body>
+
+</body>

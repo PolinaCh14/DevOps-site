@@ -77,29 +77,6 @@ class Portfolio(models.Model):
         db_table = 'portfolio'
 
 
-class Project(models.Model):
-    user = models.ForeignKey('User', models.DO_NOTHING)
-    status = models.ForeignKey('Status', models.DO_NOTHING)
-    name = models.CharField(max_length=30)
-    description = models.CharField(max_length=500, blank=True, null=True)
-    execution = models.IntegerField(blank=True, null=True)
-    created_at = models.DateField()
-    end_at = models.DateField(blank=True, null=True)
-    price = models.DecimalField(max_digits=65535, decimal_places=65535, blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'project'
-
-
-class ProjectSkill(models.Model):
-    id_skill = models.ForeignKey('Skill', models.DO_NOTHING, db_column='id_skill')
-    id_project = models.ForeignKey(Project, models.DO_NOTHING, db_column='id_project')
-
-    class Meta:
-        managed = False
-        db_table = 'project_skill'
-
 
 class Rating(models.Model):
     id_evaluates = models.ForeignKey('User', models.DO_NOTHING, db_column='id_evaluates')
@@ -114,18 +91,6 @@ class Rating(models.Model):
 
 
 
-class Skill(models.Model):
-    skill = models.CharField(unique=True, max_length=20)
-
-    class Meta:
-        managed = False
-        db_table = 'skill'
 
 
-class Status(models.Model):
-    status = models.CharField(max_length=20)
-
-    class Meta:
-        managed = False
-        db_table = 'status'
 
