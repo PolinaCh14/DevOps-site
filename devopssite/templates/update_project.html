@@ -1,0 +1,67 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<body>
+    <div class="update-form-container">
+        <h1 class="update-form-title">Оновлення проєкту: {{ project.name }}</h1>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="update-form-group">
+                <label class="update-label">Назва:</label>
+                <input type="text" name="name" value="{{ project.name }}" class="update-input">
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Опис:</label>
+                <textarea name="description" class="update-textarea">{{ project.description }}</textarea>
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Статус:</label>
+                <select name="status" class="update-select">
+                    {% for status in statuses %}
+                        <option value="{{ status.id }}" {% if status.id == project.status.id %}selected{% endif %}>
+                            {{ status.status }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Виконання (Робочі дні):</label>
+                <input type="number" name="execution" value="{{ project.execution }}" class="update-input">
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Дата завершення:</label>
+                <input type="date" name="end_at" value="{{ project.end_at }}" class="update-input">
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Ціна:</label>
+                <input type="number" step="0.01" name="price" value="{{ project.price }}" class="update-input">
+            </div>
+
+            <div class="update-form-group">
+                <label class="update-label">Необхідні навички:</label>
+                <div class="update-checkbox-group">
+                    {% for skill in skills %}
+                        <label>
+                            <input type="checkbox" name="skills" value="{{ skill.id }}"
+                                {% if skill.id in current_skills %}checked{% endif %}>
+                            {{ skill.skill }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit" class="update-submit-btn">Оновити</button>
+        </form>
+    </div>
+</body>
+{% endblock %}
+
+
+

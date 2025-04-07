@@ -1,0 +1,64 @@
+.project-form-container {
+    max-width: 620px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fffaf3;
+    border: 2px solid #cdb38b;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+.project-form-title {
+    text-align: center;
+    color: #5a3e1b;
+    margin-bottom: 25px;
+    font-size: 26px;
+}
+.project-form-group {
+    margin-bottom: 20px;
+}
+.project-label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 8px;
+}
+.project-input,
+.project-textarea,
+.project-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d2c2aa;
+    border-radius: 8px;
+    background-color: #fffef9;
+}
+.project-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+.project-submit-btn {
+    margin-top: 25px;
+    width: 100%;
+    background-color: #a77b3f;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.project-submit-btn:hover {
+    background-color: #8d6630;
+}
+@media (max-width: 600px) {
+    .project-form-container {
+        margin: 20px;
+        padding: 20px;
+    }
+    .project-form-title {
+        font-size: 22px;
+    }
+    .project-submit-btn {
+        font-size: 15px;
+        padding: 10px;
+    }
+}

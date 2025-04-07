@@ -60,11 +60,13 @@
             </div>
         </div>
         <div class="project-actions">
-        <a href="" class="btn btn-update">Оновити</a>
-
-        <a href="" class="btn btn-delete">Видалити</a>
-        <a href="" class="btn btn-request">Подати заявку на співпрацю</a>
-        </div>
+            {% if user.is_authenticated and user.id == project.user.id %}
+                <a href="{% url 'projects:update_project' project.id %}" class="btn btn-request">Оновити проєкт</a>
+                <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-request">Видалити проєкт</a>
+            {% endif %}
+            {% if project.status.id == 3 %}
+            <a href="" class="btn btn-request">Залиши оцінку співпраці</a>
+            {% endif %}
     </div>
 
 </div>

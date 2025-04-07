@@ -1,10 +1,12 @@
 from django.urls import path
 from .views import (users_project_view,
-                    all_project_view,
+                    create_project,
                     users_projects_view,
                     user_projects_search_view,
                     project_view,
-                    projects_search_view)
+                    projects_search_view,
+                    project_delete,
+                    update_project)
 
 app_name = 'projects'
 
@@ -14,8 +16,8 @@ urlpatterns = [
     path('user_projects_search_view/', user_projects_search_view, name='user_projects_search_view'),
     path('project/<int:project_id>/', project_view, name='project'),
     path('projects_search_view/', projects_search_view, name='projects_search_view'),
+    path('create_project/', create_project, name='create_project'),
+    path('project_delete/<int:project_id>/', project_delete, name='project_delete'),
+    path('update_project/<int:project_id>/', update_project, name='update_project'),
 
-    # path('logout/', logout_view, name='logout'),
-    # path('profile/', get_user, name='profile'),
-    # path('update_profile/', update_user_profile, name='update_profile'),
 ]

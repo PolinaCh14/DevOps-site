@@ -5,7 +5,6 @@ from skill.models import Skill
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
-
 def all_project_view(request):
     projects = Project.objects.all()
     return render(request, 'all_projects.html', {'projects': projects})
@@ -79,7 +78,7 @@ def user_projects_search_view(request):
         'projects': projects,
         'statuses': statuses,
         'skills': skills,
-        'request': request,  # для шаблону, якщо не включено в context_processors
+        'request': request,
     }
     return render(request, 'all_users_projects.html', context)
 
@@ -135,3 +134,106 @@ def project_view(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     skills = ProjectSkill.objects.filter(id_project=project).select_related('id_skill')
     return render(request, 'project.html', {'project': project, 'skills': skills})
+
+
+@login_required
+def create_project(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        execution = request.POST.get('execution')
+        end_at = request.POST.get('end_at')
+        price = request.POST.get('price')
+        skill_ids = request.POST.getlist('skills')
+
+        status = Status.objects.get(id=1)
+
+        project = Project.objects.create(
+            user=request.user,
+            name=name,
+            description=description,
+            status=status,
+            execution=execution if execution else None,
+            end_at=end_at if end_at else None,
+            price=price if price else None
+        )
+
+        for skill_id in skill_ids:
+            skill = Skill.objects.get(id=skill_id)
+            ProjectSkill.objects.create(id_project=project, id_skill=skill)
+
+        return redirect('projects:project', project_id=project.id)
+
+    statuses = Status.objects.all()
+    skills = Skill.objects.all()
+    return render(request, 'create_project.html', {
+        'statuses': statuses,
+        'skills': skills
+    }
+    )
+
+def project_delete(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    project.delete()
+    return redirect('projects:user_projects_search_view')
+
+
+def update_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        status_id = request.POST.get('status')
+        execution = request.POST.get('execution')
+        end_at = request.POST.get('end_at')
+        price = request.POST.get('price')
+        skill_ids = request.POST.getlist('skills')  # нові скіли
+
+        updated = False
+
+        if name and name != project.name:
+            project.name = name
+            updated = True
+
+        if description and description != project.description:
+            project.description = description
+            updated = True
+
+        if status_id and int(status_id) != project.status.id:
+            project.status = Status.objects.get(id=status_id)
+            updated = True
+
+        if execution != '' and execution != str(project.execution):
+            project.execution = int(execution)
+            updated = True
+
+        if end_at != '' and end_at != str(project.end_at):
+            project.end_at = end_at
+            updated = True
+
+        if price != '' and price != str(project.price):
+            project.price = price
+            updated = True
+
+        if updated:
+            project.save()
+
+        # Оновлення скілів: очищуємо старі і додаємо нові
+        ProjectSkill.objects.filter(id_project=project).delete()
+        for skill_id in skill_ids:
+            skill = Skill.objects.get(id=skill_id)
+            ProjectSkill.objects.create(id_project=project, id_skill=skill)
+
+        return redirect('projects:user_project', project_id=project.id)
+
+    statuses = Status.objects.all()
+    skills = Skill.objects.all()
+    current_skills = project.projectskill_set.values_list('id_skill_id', flat=True)
+
+    return render(request, 'update_project.html', {
+        'project': project,
+        'statuses': statuses,
+        'skills': skills,
+        'current_skills': current_skills,
+    })
