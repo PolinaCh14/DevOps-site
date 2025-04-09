@@ -219,7 +219,6 @@ def update_project(request, project_id):
         if updated:
             project.save()
 
-        # Оновлення скілів: очищуємо старі і додаємо нові
         ProjectSkill.objects.filter(id_project=project).delete()
         for skill_id in skill_ids:
             skill = Skill.objects.get(id=skill_id)

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'users',
     'project',
     'skill',
+    'freelancer',
 
     'rest_framework',
     'rest_framework_simplejwt',

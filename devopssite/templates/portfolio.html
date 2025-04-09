@@ -1,0 +1,23 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<body class="portfolio-body">
+    <div class="portfolio-container">
+        <h1 class="portfolio-title">{{ portfolio.title }}</h1>
+
+        {% if portfolio.photo %}
+            <img class="portfolio-image" src="{{ portfolio.photo }}" alt="Зображення проєкту">
+        {% endif %}
+
+        <p class="portfolio-description">
+            <strong>Опис:</strong> {{ portfolio.description }}
+        </p>
+
+        {% if portfolio.url %}
+            <p class="portfolio-link">
+                <a href="{{ portfolio.url }}" target="_blank">Переглянути проєкт</a>
+            </p>
+        {% endif %}
+    </div>
+</body>
+{% endblock %}
