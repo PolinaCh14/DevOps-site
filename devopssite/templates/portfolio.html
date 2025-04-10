@@ -18,6 +18,8 @@
                 <a href="{{ portfolio.url }}" target="_blank">Переглянути проєкт</a>
             </p>
         {% endif %}
+        <a href="{% url 'freelancers:update_portfolio' portfolio.id %}" class="portfolio-link">Оновити проєкт</a>
+        <a href="{% url 'freelancers:delete_portfolio' portfolio.id %}" class="portfolio-link">Видалити проєкт</a>
     </div>
 </body>
 {% endblock %}

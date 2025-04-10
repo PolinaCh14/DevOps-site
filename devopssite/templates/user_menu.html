@@ -1,4 +1,7 @@
 <div class="menu">
     <a href="{% url 'projects:user_projects_search_view' %}">Мої проєкти</a>
     <a href="#">Мої запити на співпрацю</a>
+    {% if user.role.id == 2 %}
+    <a href="{% url 'freelancers:user_freelancer_detail' %}">Мій профіль розробника</a>
+    {% endif %}
 </div>

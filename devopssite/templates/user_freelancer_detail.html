@@ -1,0 +1,54 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<body>
+    <div class="container">
+        {% include "user_menu.html" %}
+
+        {% if freelancer.id %}
+            <div class="profile-card">
+                <div class="profile-header">
+                    <img src="{{ user.profile_picture }}" alt="Фото профілю" class="profile-picture">
+                    <div class="profile-info">
+                        <h1>{{ user.name }} {{ user.surname }}</h1>
+                        <p><strong>Email:</strong> {{ user.email }}</p>
+                        <p><strong>Телефон:</strong> {{ user.phone }}</p>
+                        <p><strong>Про себе:</strong> {{ user.about_me }}</p>
+                        <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
+                        <p><strong>CV:</strong> {{ freelancer.cv }}</p>
+                    </div>
+                    <a href="{% url 'freelancers:update_freelancer_profile' %}" class="portfolio-link">Оновити профіль</a>
+                </div>
+            </div>
+
+            <div class="skills-section">
+                <h3>Навички</h3>
+                <ul class="skill-list">
+                    {% for skill in skills %}
+                        <li>{{ skill.id_skill.skill }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="portfolio-section">
+                <h3>Портфоліо</h3>
+                <a href="{% url 'freelancers:create_portfolio'  %}" class="portfolio-link">Створити проєкт</a>
+                <div class="portfolio-grid">
+                    {% for item in portfolio %}
+                        <div class="portfolio-card">
+                            <h4>{{ item.title }}</h4>
+                            <p>{{ item.description }}</p>
+                            <a href="{% url 'freelancers:get_portfolio' item.id %}" class="portfolio-link">Переглянути проєкт</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="no-profile">
+                <p>У вас ще немає профілю фрілансера.</p>
+                <a href="{% url 'freelancers:create_freelancer_profile' %}" class="btn btn-primary">Створити профіль</a>
+            </div>
+        {% endif %}
+    </div>
+</body>
+{% endblock %}

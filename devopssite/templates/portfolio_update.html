@@ -1,0 +1,33 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Редагувати проєкт</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="title">Назва проєкту:</label>
+            <input type="text" name="title" id="title" class="form-control" value="{{ item.title }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Опис:</label>
+            <textarea name="description" id="description" rows="4" class="form-control">{{ item.description }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="photo">URL фото:</label>
+            <input type="text" name="photo" id="photo" class="form-control" value="{{ item.photo }}">
+        </div>
+
+        <div class="form-group">
+            <label for="url">Посилання на проєкт:</label>
+            <input type="text" name="url" id="url" class="form-control" value="{{ item.url }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Оновити</button>
+    </form>
+</div>
+{% endblock %}

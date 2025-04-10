@@ -14,7 +14,11 @@
         <div class="profile-card">
             <div class="profile-main">
                 <div class="user-picture">
+                    {% if profile_picture is not None %}
+                    <img src="{{ profile_picture }}" alt="Фото профілю">
+                    {% else %}
                     <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю">
+                    {% endif %}
                 </div>
                 <div class="profile-info">
                     <p><strong>Ім’я:</strong> {{ name }}</p>

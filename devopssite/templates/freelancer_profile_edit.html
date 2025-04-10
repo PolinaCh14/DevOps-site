@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Редагування профілю</title>
+    <link rel="stylesheet" href="{% static 'css/freelancer_profile.css' %}">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Редагувати профіль фрілансера</h1>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <label for="cv">CV:</label>
+            <input type="text" name="cv" id="cv" value="{{ freelancer.cv|default_if_none:'' }}">
+
+            <label for="experience">Досвід (роки):</label>
+            <input type="number" name="experience" id="experience" value="{{ freelancer.experience|default_if_none:'' }}">
+
+            <label for="status">Статус:</label>
+            <select name="status" id="status">
+                {% for status in statuses %}
+                    <option value="{{ status.id }}" {% if freelancer.id_status.id == status.id %}selected{% endif %}>
+                        {{ status.status }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <fieldset>
+                <legend>Навички:</legend>
+                {% for skill in skills %}
+                    <label>
+                        <input type="checkbox" name="skills" value="{{ skill.id }}"
+                            {% if skill.id in existing_skill_ids %}checked{% endif %}>
+                        {{ skill.skill }}
+                    </label><br>
+                {% endfor %}
+            </fieldset>
+
+            <button type="submit">Зберегти</button>
+        </form>
+    </div>
+</body>
+</html>
