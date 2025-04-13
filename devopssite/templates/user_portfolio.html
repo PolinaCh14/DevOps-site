@@ -2,6 +2,7 @@
 
 {% block content %}
 <body class="portfolio-body">
+{% include "user_menu.html" %}
     <div class="portfolio-container">
 
         <h1 class="portfolio-title">{{ portfolio.title }}</h1>
@@ -18,6 +19,10 @@
             <p class="portfolio-link">
                 <a href="{{ portfolio.url }}" target="_blank">Переглянути проєкт</a>
             </p>
+        {% endif %}
+        {% if freelancer.id_user.id == user.id %}
+        <a href="{% url 'freelancers:update_portfolio' portfolio.id %}" class="portfolio-link">Оновити проєкт</a>
+        <a href="{% url 'freelancers:delete_portfolio' portfolio.id %}" class="portfolio-link">Видалити проєкт</a>
         {% endif %}
     </div>
 </body>

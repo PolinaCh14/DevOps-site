@@ -12,7 +12,13 @@ def get_all_portfolio(request, freelancer_id):
 
 def get_portfolio(request, portfolio_id):
     portfolio = get_object_or_404(Portfolio, id=portfolio_id)
-    return render(request, 'portfolio.html', {'portfolio': portfolio})
+    freelancer = get_object_or_404(Freelancer, id=portfolio.id_freelancer.id)
+    return render(request, 'portfolio.html', {'portfolio': portfolio, 'freelancer': freelancer})
+
+def get_user_portfolio(request, portfolio_id):
+    portfolio = get_object_or_404(Portfolio, id=portfolio_id)
+    freelancer = get_object_or_404(Freelancer, id=portfolio.id_freelancer.id)
+    return render(request, 'user_portfolio.html', {'portfolio': portfolio, 'freelancer': freelancer})
 
 @login_required
 def create_portfolio(request):
@@ -141,7 +147,7 @@ def freelancer_detail(request, freelancer_id):
 
     return render(request, 'freelancer_detail.html', {
         'freelancer': freelancer,
-        'user': freelancer.id_user,  # пов'язаний користувач
+        'freelancer_user': freelancer.id_user,
         'skills': skills,
         'portfolio': portfolio,
     })

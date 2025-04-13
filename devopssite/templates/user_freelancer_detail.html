@@ -38,7 +38,7 @@
                         <div class="portfolio-card">
                             <h4>{{ item.title }}</h4>
                             <p>{{ item.description }}</p>
-                            <a href="{% url 'freelancers:get_portfolio' item.id %}" class="portfolio-link">Переглянути проєкт</a>
+                            <a href="{% url 'freelancers:get_user_portfolio' item.id %}" class="portfolio-link">Переглянути проєкт</a>
                         </div>
                     {% endfor %}
                 </div>

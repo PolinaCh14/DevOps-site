@@ -56,6 +56,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'devopssite.urls'
 
+LOGIN_URL = '/users/login/'
+
 STATIC_URL = '/static'
 STATICFILES_DIRS = (
   os.path.join(BASE_DIR, 'static/'),

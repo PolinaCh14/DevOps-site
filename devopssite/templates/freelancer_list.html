@@ -59,7 +59,6 @@
                 <button type="submit" class="btn">Знайти</button>
             </form>
 
-            <!-- Блок результатів -->
             <div class="freelancer-results">
                 <h2 class="results-title">Результати:</h2>
                 {% if freelancers %}
@@ -67,8 +66,10 @@
                         {% for freelancer in freelancers %}
                             <div class="freelancer-card">
                                 <h3>{{ freelancer.id_user.name }} {{ freelancer.id_user.surname }}</h3>
+                                {% if user.is_authenticated %}
                                 <p><strong>Email:</strong> {{ freelancer.id_user.email }}</p>
                                 <p><strong>Телефон:</strong> {{ freelancer.id_user.phone }}</p>
+                                {% endif %}
                                 <p><strong>Про себе:</strong> {{ freelancer.id_user.about_me }}</p>
                                 <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
                                 <p><strong>Статус:</strong> {{ freelancer.id_status.status }}</p>

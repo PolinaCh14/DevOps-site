@@ -18,7 +18,7 @@
             </div>
 
             <div class="field-value">
-                <span class="field-label">Автор:</span> {{ project.user }}
+                <span class="field-label">Автор:</span> {{ project.user.name }} {{ project.user.surname }}
             </div>
             {% if user.is_authenticated  %}
             <div class="field-value">
