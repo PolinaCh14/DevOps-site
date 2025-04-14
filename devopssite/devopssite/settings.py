@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'users',
     'project',
     'skill',
+    'freelancer',
 
     'rest_framework',
     'rest_framework_simplejwt',
@@ -54,6 +55,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'devopssite.urls'
+
+LOGIN_URL = '/users/login/'
 
 STATIC_URL = '/static'
 STATICFILES_DIRS = (

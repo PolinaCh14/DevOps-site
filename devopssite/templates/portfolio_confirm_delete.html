@@ -1,0 +1,14 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Видалення проєкту</h2>
+    <p>Ви впевнені, що хочете видалити <strong>{{ item.title }}</strong>?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Так, видалити</button>
+        <a href="{% url 'freelancers:user_freelancer_detail' %}" class="btn btn-secondary">Скасувати</a>
+    </form>
+</div>
+{% endblock %}

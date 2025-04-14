@@ -1,0 +1,87 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<body>
+    <div class="container">
+        <h1 class="page-title">Пошук фрілансерів</h1>
+
+        <div class="content-layout">
+            <!-- Блок фільтрів -->
+            <form method="get" class="filter-form sidebar">
+                <h3>Фільтри</h3>
+
+                <div class="form-group">
+                    <label>Ім'я або прізвище:</label>
+                    <input type="text" name="name" value="{{ request.GET.name }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Статус:</label>
+                    <select name="status">
+                        <option value="">Усі</option>
+                        {% for status in statuses %}
+                            <option value="{{ status.id }}" {% if request.GET.status == status.id|stringformat:"s" %}selected{% endif %}>
+                                {{ status.status }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Навичка:</label>
+                    <select name="skill">
+                        <option value="">Усі</option>
+                        {% for skill in skills %}
+                            <option value="{{ skill.id }}" {% if request.GET.skill == skill.id|stringformat:"s" %}selected{% endif %}>
+                                {{ skill.skill }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Досвід:</label>
+                    <input type="number" name="experience" value="{{ request.GET.experience }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Фільтр досвіду:</label>
+                    <select name="experience_filter">
+                        <option value="">--</option>
+                        <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
+                        <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
+                        <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
+                        <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
+                        <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn">Знайти</button>
+            </form>
+
+            <div class="freelancer-results">
+                <h2 class="results-title">Результати:</h2>
+                {% if freelancers %}
+                    <div class="freelancer-grid">
+                        {% for freelancer in freelancers %}
+                            <div class="freelancer-card">
+                                <h3>{{ freelancer.id_user.name }} {{ freelancer.id_user.surname }}</h3>
+                                {% if user.is_authenticated %}
+                                <p><strong>Email:</strong> {{ freelancer.id_user.email }}</p>
+                                <p><strong>Телефон:</strong> {{ freelancer.id_user.phone }}</p>
+                                {% endif %}
+                                <p><strong>Про себе:</strong> {{ freelancer.id_user.about_me }}</p>
+                                <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
+                                <p><strong>Статус:</strong> {{ freelancer.id_status.status }}</p>
+                                <a href="{% url 'freelancers:freelancer_detail' freelancer.id %}" class="btn-link">Переглянути профіль</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-results">Фрілансерів не знайдено.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}

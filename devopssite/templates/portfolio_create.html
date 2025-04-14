@@ -1,0 +1,35 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<div class="form-wrapper">
+    <div class="portfolio-create-container">
+        <h2 class="form-title">Додати новий проєкт до портфоліо</h2>
+
+        <form method="post" class="portfolio-form">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="title">Назва проєкту:</label>
+                <input type="text" name="title" id="title" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Опис:</label>
+                <textarea name="description" id="description" rows="4" class="form-control" placeholder="Короткий опис проєкту..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="photo">URL фото (необов’язково):</label>
+                <input type="text" name="photo" id="photo" class="form-control" placeholder="https://example.com/image.jpg">
+            </div>
+
+            <div class="form-group">
+                <label for="url">Посилання на проєкт (необов’язково):</label>
+                <input type="text" name="url" id="url" class="form-control" placeholder="https://example.com/project">
+            </div>
+
+            <button type="submit" class="submit-btn">Зберегти</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -5,16 +5,20 @@
     <title>Профіль користувача</title>
 </head>
 <body>
+ {% include "user_menu.html" %}
 <div class="profile-wrapper">
-    {% include "user_menu.html" %}
 
     <div class="profile-container">
         <h2>Профіль</h2>
 
         <div class="profile-card">
             <div class="profile-main">
-                <div class="profile-picture">
+                <div class="user-picture">
+                    {% if profile_picture is not None %}
+                    <img src="{{ profile_picture }}" alt="Фото профілю">
+                    {% else %}
                     <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю">
+                    {% endif %}
                 </div>
                 <div class="profile-info">
                     <p><strong>Ім’я:</strong> {{ name }}</p>

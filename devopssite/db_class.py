@@ -38,12 +38,7 @@ class FreelancerSkill(models.Model):
         db_table = 'freelancer_skill'
 
 
-class FreelancerStatus(models.Model):
-    status = models.CharField(max_length=20)
 
-    class Meta:
-        managed = False
-        db_table = 'freelancer_status'
 
 
 class Notification(models.Model):

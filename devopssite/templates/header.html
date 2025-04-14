@@ -20,6 +20,9 @@
             </div>
             <div class="div-nav__inform" id="nav-links">
                 <nav class="div-nav__nav">
+                    <a href="{% url 'freelancers:freelancer_list' %}" class="div-nav__nav-link">Фрілансери</a>
+                </nav>
+                <nav class="div-nav__nav">
                     <a href="{% url 'projects:projects_search_view' %}" class="div-nav__nav-link">Проєкти</a>
                 </nav>
                 {% if not user.is_authenticated %}
@@ -30,9 +33,6 @@
                 {% if user.is_authenticated %}
                 <nav class="div-nav__nav">
                     <a href="{% url 'users:profile' %}" class="div-nav__nav-link">Профіль</a>
-                </nav>
-                <nav class="div-nav__nav">
-                    <a href="" class="div-nav__nav-link">Notes</a>
                 </nav>
                 <nav class="div-nav__nav">
                     <a href="{% url 'users:logout' %}" class="div-nav__nav-link">Вийти</a>

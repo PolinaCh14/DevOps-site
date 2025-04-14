@@ -1,16 +1,16 @@
 .profile-wrapper {
     max-width: 900px;
-    margin: 60px auto; /* відступ від хедера */
+    margin: 60px auto;
     padding: 0 20px;
 }
 
-/* ======= Меню ======= */
 .menu {
     display: flex;
     justify-content: center;
     gap: 20px;
     margin-bottom: 30px;
     flex-wrap: wrap;
+    margin-top: 20px;
 }
 
 .menu a {
@@ -50,7 +50,6 @@
     padding: 25px;
 }
 
-/* ======= Головна частина: фото + інфо ======= */
 .profile-main {
     display: flex;
     gap: 40px;
@@ -63,8 +62,8 @@
     max-width: 250px;
 }
 
-.profile-picture img {
-    width: 100%;
+.user-picture img {
+    width: 70%;
     height: auto;
     border-radius: 12px;
     object-fit: cover;
@@ -112,7 +111,7 @@
         align-items: center;
     }
 
-    .profile-picture,
+    .user-picture,
     .profile-info {
         max-width: 100%;
         text-align: center;

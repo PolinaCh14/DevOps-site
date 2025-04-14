@@ -1,0 +1,56 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <title>Редагування профілю</title>
+    <link rel="stylesheet" href="{% static 'css/freelancer_profile.css' %}">
+</head>
+<body>
+    <div class="form-wrapper">
+        <div class="profile-edit-container">
+            <h1 class="profile-title">Редагувати профіль фрілансера</h1>
+
+            <form method="post" class="profile-form">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="cv">CV:</label>
+                    <input type="text" name="cv" id="cv" value="{{ freelancer.cv|default_if_none:'' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="experience">Досвід (роки):</label>
+                    <input type="number" name="experience" id="experience" value="{{ freelancer.experience|default_if_none:'' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Статус:</label>
+                    <select name="status" id="status">
+                        {% for status in statuses %}
+                            <option value="{{ status.id }}" {% if freelancer.id_status.id == status.id %}selected{% endif %}>
+                                {{ status.status }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <fieldset class="form-group skills-group">
+                    <legend>Навички:</legend>
+                    <div class="skills-list">
+                        {% for skill in skills %}
+                            <label class="skill-checkbox">
+                                <input type="checkbox" name="skills" value="{{ skill.id }}"
+                                    {% if skill.id in existing_skill_ids %}checked{% endif %}>
+                                {{ skill.skill }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="submit-btn">Зберегти</button>
+            </form>
+        </div>
+    </div>
+</body>
+{% endblock %}
