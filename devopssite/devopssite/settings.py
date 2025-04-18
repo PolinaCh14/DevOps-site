@@ -21,9 +21,6 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'users.User'
 
-# STATIC_URL = '/static/css'
-
-# AUTH_USER_MODEL = 'users.CustomUser'
 # Application definition
 
 INSTALLED_APPS = [
@@ -38,6 +35,8 @@ INSTALLED_APPS = [
     'project',
     'skill',
     'freelancer',
+    'rating',
+    'workrequest',
 
     'rest_framework',
     'rest_framework_simplejwt',

@@ -4,6 +4,8 @@ from .models import Project, ProjectSkill, Status
 from skill.models import Skill
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from workrequest.models import WorkRequest
+from freelancer.models import Freelancer
 
 def all_project_view(request):
     projects = Project.objects.all()
@@ -45,6 +47,26 @@ def user_projects_search_view(request):
     status_id = request.GET.get('status')
     price = request.GET.get('price')
     price_filter = request.GET.get('price_filter')
+
+    if request.user.role.id == 2:
+        freelancer = get_object_or_404(
+            Freelancer,
+            id_user=request.user.id
+        )
+
+        qs = WorkRequest.objects.filter(
+            id_freelancer=freelancer.id,
+            id_status=2
+        )
+
+        project_ids = list(WorkRequest.objects.filter(
+            id_freelancer=freelancer.id,
+            id_status=2
+        ).values_list('id_project', flat=True))
+
+
+        projects = Project.objects.filter(id__in=project_ids)
+
 
     if name:
         projects = projects.filter(name__icontains=name)
@@ -188,7 +210,7 @@ def update_project(request, project_id):
         execution = request.POST.get('execution')
         end_at = request.POST.get('end_at')
         price = request.POST.get('price')
-        skill_ids = request.POST.getlist('skills')  # нові скіли
+        skill_ids = request.POST.getlist('skills')
 
         updated = False
 

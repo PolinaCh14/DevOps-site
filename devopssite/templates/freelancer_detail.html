@@ -13,6 +13,7 @@
                 {% endif %}
                 <div class="profile-info">
                     <h1>{{ freelancer_user.name }} {{ freelancer_user.surname }}</h1>
+                    <h1>{{ freelancer.id }}</h1>
                     {% if user.is_authenticated %}
                     <p><strong>Email:</strong> {{ freelancer_user.email }}</p>
                     <p><strong>Телефон:</strong> {{ freelancer_user.phone }}</p>
@@ -22,6 +23,7 @@
                     <p><strong>Про себе:</strong> {{ freelancer_user.about_me }}</p>
                     <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
                     <p><strong>CV:</strong> {{ freelancer.cv }}</p>
+                    <p><strong>Рейтинг:</strong> {{ rating }}</p>
                 </div>
             </div>
         </div>
