@@ -1,0 +1,82 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Мої заявки на роботу</title>
+</head>
+<body>
+{% include "user_menu.html" %}
+<div class="work-request">
+    <h1 class="work-request__title">Мої заявки на роботу</h1>
+
+    <form method="get" class="work-request__filter-form">
+        <label for="status" class="work-request__filter-label">Фільтр за статусом:</label>
+        <select name="status" id="status" class="work-request__filter-select" onchange="this.form.submit()">
+            <option value="">Всі</option>
+            {% for status in statuses %}
+                <option value="{{ status.id }}" {% if status.id == selected_status %}selected{% endif %}>
+                    {{ status.status }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if work_request %}
+        <table class="work-request__table">
+            <thead class="work-request__thead">
+                <tr class="work-request__header-row">
+                    <th class="work-request__header">Проєкт</th>
+                    <th class="work-request__header">Фрілансер</th>
+                    <th class="work-request__header">Статус</th>
+                    <th class="work-request__header">Дата створення</th>
+                    <th class="work-request__header">Дія</th>
+                </tr>
+            </thead>
+            <tbody class="work-request__tbody">
+                {% for requests in work_request %}
+                    {% if request.user.role.id == 3 %}
+                        <form method="post" action="{% url 'workrequest:change_request_status' requests.id_project.id requests.id_freelancer.id %}">
+                            {% csrf_token %}
+                            <tr class="work-request__row">
+                                <td class="work-request__cell" data-label="Проєкт">{{ requests.id_project.name }}</td>
+                                <td class="work-request__cell" data-label="Фрілансер"><a href="{% url 'freelancers:freelancer_detail' requests.id_freelancer.id %}">{{ requests.id_freelancer.id_user.name }} {{ requests.id_freelancer.id_user.surname }}</a></td>
+                                <td class="work-request__cell" data-label="Статус">
+                                    <select name="status_id" class="work-request__select">
+                                        <option value="{{ requests.id_status.id }}" selected>
+                                            {{ requests.id_status.status }}
+                                        </option>
+                                        {% for status in statuses %}
+                                            {% if status.id != requests.id_status.id %}
+                                                <option value="{{ status.id }}">{{ status.status }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="work-request__cell" data-label="Дата створення">{{ requests.created_at }}</td>
+                                <td class="work-request__cell" data-label="Дія">
+                                    <button type="submit" class="work-request__button">Змінити</button>
+                                </td>
+                            </tr>
+                        </form>
+                    {% else %}
+                        <tr class="work-request__row">
+                            <td class="work-request__cell">{{ requests.id_project.name }}</td>
+                            <td class="work-request__cell" data-label="Фрілансер"><a href="{% url 'freelancers:freelancer_detail' requests.id_freelancer.id %}">{{ requests.id_freelancer.id_user.name }} {{ requests.id_freelancer.id_user.surname }}</a></td>
+                            <td class="work-request__cell">{{ requests.id_status.status }}</td>
+                            <td class="work-request__cell">{{ requests.created_at }}</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="work-request__no-data">Ви ще не подавали жодної заявки.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>
+{% endblock %}

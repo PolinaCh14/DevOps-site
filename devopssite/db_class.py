@@ -18,24 +18,6 @@ class WorkRequestStatus(models.Model):
         db_table = 'work_request_status'
 
 
-class Freelancer(models.Model):
-    id_user = models.ForeignKey('User', models.DO_NOTHING, db_column='id_user')
-    id_status = models.ForeignKey('FreelancerStatus', models.DO_NOTHING, db_column='id_status')
-    cv = models.CharField(blank=True, null=True)
-    experience = models.IntegerField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'freelancer'
-
-
-class FreelancerSkill(models.Model):
-    id_skill = models.ForeignKey('Skill', models.DO_NOTHING, db_column='id_skill')
-    id_freelancer = models.ForeignKey(Freelancer, models.DO_NOTHING, db_column='id_freelancer')
-
-    class Meta:
-        managed = False
-        db_table = 'freelancer_skill'
 
 
 
@@ -61,15 +43,6 @@ class NotificationType(models.Model):
         db_table = 'notification_type'
 
 
-class Portfolio(models.Model):
-    id_freelancer = models.ForeignKey(Freelancer, models.DO_NOTHING, db_column='id_freelancer')
-    photo = models.CharField(max_length=30, blank=True, null=True)
-    description = models.CharField(max_length=300, blank=True, null=True)
-    url = models.CharField(max_length=100, blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'portfolio'
 
 
 

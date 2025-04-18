@@ -65,7 +65,7 @@
                 <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-request">Видалити проєкт</a>
             {% endif %}
             {% if project.status.id == 3 %}
-            <a href="" class="btn btn-request">Залиши оцінку співпраці</a>
+            <a href="{% url 'rating:create_rating' project.id project.user.id %}" class="btn btn-request">Залиши оцінку співпраці</a>
             {% endif %}
     </div>
 

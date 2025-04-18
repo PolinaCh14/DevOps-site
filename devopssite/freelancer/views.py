@@ -5,6 +5,7 @@ from skill.models import Skill
 from users.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from rating.utils import get_average_rating_for_user
 
 def get_all_portfolio(request, freelancer_id):
     portfolio = Portfolio.objects.filter(id_freelancer = freelancer_id)
@@ -52,7 +53,7 @@ def update_portfolio(request, portfolio_id):
         title = request.POST.get('title')
         photo = request.POST.get('photo')
         description = request.POST.get('description')
-        url = request.POST.get('url') # нові скіли
+        url = request.POST.get('url')
 
         updated = False
 
@@ -87,7 +88,6 @@ def freelancer_list(request):
     statuses = FreelancerStatus.objects.all()
     skills = Skill.objects.all()
 
-    # Параметри з GET-запиту
     name = request.GET.get('name')
     status_id = request.GET.get('status')
     skill_id = request.GET.get('skill')
@@ -142,6 +142,7 @@ def freelancer_detail(request, freelancer_id):
         Freelancer.objects.select_related('id_user', 'id_status'),
         id=freelancer_id
     )
+    rating = round(get_average_rating_for_user(int(freelancer.id_user.id)))
     skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
     portfolio = freelancer.portfolio_set.all()
 
@@ -150,6 +151,7 @@ def freelancer_detail(request, freelancer_id):
         'freelancer_user': freelancer.id_user,
         'skills': skills,
         'portfolio': portfolio,
+        'rating': rating,
     })
 
 @login_required
@@ -158,12 +160,14 @@ def user_freelancer_detail(request):
         freelancer = Freelancer.objects.select_related('id_user', 'id_status').get(id_user=request.user)
         skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
         portfolio = freelancer.portfolio_set.all()
+        rating = round(get_average_rating_for_user(request.user.id))
 
         return render(request, 'user_freelancer_detail.html', {
             'freelancer': freelancer,
             'user': freelancer.id_user,
             'skills': skills,
             'portfolio': portfolio,
+            'rating': rating,
         })
     except Freelancer.DoesNotExist:
         print("error")
@@ -194,7 +198,7 @@ def update_freelancer_profile(request):
 
         freelancer.save()
 
-        selected_skill_ids = request.POST.getlist('skills')  # список checkbox-значень
+        selected_skill_ids = request.POST.getlist('skills')
 
         FreelancerSkill.objects.filter(id_freelancer=freelancer).delete()
 
@@ -219,7 +223,6 @@ def update_freelancer_profile(request):
 
 @login_required
 def create_freelancer_profile(request):
-    # Якщо профіль уже існує — редирект на деталі
     if Freelancer.objects.filter(id_user=request.user).exists():
         return redirect('freelancers:user_freelancer_detail')
 
