@@ -34,7 +34,7 @@ def send_notification_email(notification_id):
         subject = "New Collaboration Request"
         message = notification.message
 
-        profile_url = f"https://yourapp.com/profile/{sender.id}"
+        profile_url = f"http://127.0.0.1:8000/freelancers/freelancer_detail/{sender.id}"
 
         html_message = render_email_html_message(
             recipient=f"{receiver.surname}",
