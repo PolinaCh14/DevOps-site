@@ -51,7 +51,8 @@ def logout_view(request):
 @login_required()
 def get_user(request):
     user = request.user
-    rating = round(get_average_rating_for_user(request.user.id))
+    raw_rating = get_average_rating_for_user(int(request.user.id))
+    rating = round(raw_rating) if raw_rating is not None else 0
     context = {
         "id": user.id,
         "name": user.name,

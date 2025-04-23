@@ -58,6 +58,7 @@ def employer_work_request(request):
 
 
 @login_required
+@login_required
 def change_request_status(request, project_id, freelancer_id):
     if request.method == 'POST':
         status_id = request.POST.get('status_id')
@@ -69,8 +70,9 @@ def change_request_status(request, project_id, freelancer_id):
         else:
             return HttpResponseBadRequest("Статус не був переданий.")
 
+        project = get_object_or_404(Project, id=project_id)
+
         if status_id == 2:
-            project = get_object_or_404(Project, id=project_id)
             work_requests = WorkRequest.objects.filter(id_project=project_id)
             for i in work_requests:
                 if i.id_freelancer.id == freelancer_id:
@@ -79,9 +81,14 @@ def change_request_status(request, project_id, freelancer_id):
                 else:
                     i.id_status_id = 3
                 i.save()
-                project.save()
+            project.save()
         else:
-            WorkRequest.objects.filter(id_project=project_id, id_freelancer=freelancer_id).update(id_status_id=status_id)
+            try:
+                work_request = WorkRequest.objects.get(id_project=project_id, id_freelancer=freelancer_id)
+                work_request.id_status_id = status_id
+                work_request.save()
+            except WorkRequest.DoesNotExist:
+                return HttpResponseBadRequest("Запит не знайдено.")
 
         return redirect('workrequest:employer_request')
 

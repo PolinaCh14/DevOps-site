@@ -142,7 +142,8 @@ def freelancer_detail(request, freelancer_id):
         Freelancer.objects.select_related('id_user', 'id_status'),
         id=freelancer_id
     )
-    rating = round(get_average_rating_for_user(int(freelancer.id_user.id)))
+    raw_rating = get_average_rating_for_user(int(freelancer.id_user.id))
+    rating = round(raw_rating) if raw_rating is not None else 0
     skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
     portfolio = freelancer.portfolio_set.all()
 
