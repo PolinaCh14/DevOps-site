@@ -1,0 +1,32 @@
+{% extends "header.html" %}
+
+{% block content %}
+<div class="rating-form-container" style="max-width: 500px; margin: 0 auto; padding: 20px; border: 2px solid #8B4513; border-radius: 10px; background-color: #f9f3ec;">
+    <h2 style="text-align: center; color: #5a3e1b;">Залишити оцінку</h2>
+
+    <!-- Відображення повідомлень -->
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li style="color: {% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% endif %};">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" style="display: flex; flex-direction: column; gap: 15px;">
+        {% csrf_token %}
+        <label for="rating">Оцінка (0 до 5):</label>
+        <input type="number" name="rating" id="rating" step="0.1" min="0" max="5" required>
+
+        <button type="submit" style="padding: 10px; background-color: #8B4513; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Надіслати оцінку
+        </button>
+    </form>
+
+    <div style="margin-top: 20px;">
+        <a href="{% url 'projects:user_project' project_id=project_id %}">⬅ Повернутися до проєкту</a>
+    </div>
+</div>
+{% endblock %}

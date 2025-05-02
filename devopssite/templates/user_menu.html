@@ -1,7 +1,12 @@
 <div class="menu">
     <a href="{% url 'projects:user_projects_search_view' %}">Мої проєкти</a>
-    <a href="#">Мої запити на співпрацю</a>
+    {% if user.is_authenticated and user.role.id == 2 %}
+    <a href="{% url 'workrequest:freelancer_request' %}">Мої запити на співпрацю</a>
+    {% elif user.is_authenticated and user.role.id == 3 %}
+    <a href="{% url 'workrequest:employer_request' %}">Мої запити на співпрацю</a>
+    {% endif %}
     {% if user.role.id == 2 %}
     <a href="{% url 'freelancers:user_freelancer_detail' %}">Мій профіль розробника</a>
+    <a href="{% url 'freelancers:analyze_resume' %}">Отримати поради</a>
     {% endif %}
 </div>

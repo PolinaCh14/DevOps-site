@@ -5,6 +5,11 @@ from skill.models import Skill
 from users.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from rating.utils import get_average_rating_for_user
+from django.http import JsonResponse
+from .utils import analyze_resume
+import markdown
+
 
 def get_all_portfolio(request, freelancer_id):
     portfolio = Portfolio.objects.filter(id_freelancer = freelancer_id)
@@ -52,7 +57,7 @@ def update_portfolio(request, portfolio_id):
         title = request.POST.get('title')
         photo = request.POST.get('photo')
         description = request.POST.get('description')
-        url = request.POST.get('url') # нові скіли
+        url = request.POST.get('url')
 
         updated = False
 
@@ -87,7 +92,6 @@ def freelancer_list(request):
     statuses = FreelancerStatus.objects.all()
     skills = Skill.objects.all()
 
-    # Параметри з GET-запиту
     name = request.GET.get('name')
     status_id = request.GET.get('status')
     skill_id = request.GET.get('skill')
@@ -142,6 +146,8 @@ def freelancer_detail(request, freelancer_id):
         Freelancer.objects.select_related('id_user', 'id_status'),
         id=freelancer_id
     )
+    raw_rating = get_average_rating_for_user(int(freelancer.id_user.id))
+    rating = round(raw_rating) if raw_rating is not None else 0
     skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
     portfolio = freelancer.portfolio_set.all()
 
@@ -150,6 +156,7 @@ def freelancer_detail(request, freelancer_id):
         'freelancer_user': freelancer.id_user,
         'skills': skills,
         'portfolio': portfolio,
+        'rating': rating,
     })
 
 @login_required
@@ -158,12 +165,14 @@ def user_freelancer_detail(request):
         freelancer = Freelancer.objects.select_related('id_user', 'id_status').get(id_user=request.user)
         skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
         portfolio = freelancer.portfolio_set.all()
+        rating = round(get_average_rating_for_user(request.user.id))
 
         return render(request, 'user_freelancer_detail.html', {
             'freelancer': freelancer,
             'user': freelancer.id_user,
             'skills': skills,
             'portfolio': portfolio,
+            'rating': rating,
         })
     except Freelancer.DoesNotExist:
         print("error")
@@ -194,7 +203,7 @@ def update_freelancer_profile(request):
 
         freelancer.save()
 
-        selected_skill_ids = request.POST.getlist('skills')  # список checkbox-значень
+        selected_skill_ids = request.POST.getlist('skills')
 
         FreelancerSkill.objects.filter(id_freelancer=freelancer).delete()
 
@@ -219,7 +228,6 @@ def update_freelancer_profile(request):
 
 @login_required
 def create_freelancer_profile(request):
-    # Якщо профіль уже існує — редирект на деталі
     if Freelancer.objects.filter(id_user=request.user).exists():
         return redirect('freelancers:user_freelancer_detail')
 
@@ -309,3 +317,38 @@ def delete_portfolio_item(request, item_id):
     return render(request, 'portfolio_confirm_delete.html', {
         'item': portfolio_item
     })
+
+
+
+def render_resume_feedback(raw_markdown):
+    html = markdown.markdown(raw_markdown, extensions=['fenced_code'])
+    return html
+
+
+@login_required
+def analyze_resume_view(request):
+    freelancer = get_object_or_404(Freelancer, id_user=request.user)
+
+    if request.method == "POST":
+        pass
+        cv_url = freelancer.cv
+        if not cv_url:
+            return JsonResponse({"error": "CV не знайдено."}, status=400)
+
+        try:
+            analysis_result = analyze_resume(cv_url, int(freelancer.id))
+            rendered_html = render_resume_feedback(analysis_result)
+            return JsonResponse({"analysis": rendered_html})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    # GET-запит
+    has_cv = bool(freelancer.cv)
+    return render(request, 'analyze_resume.html', {
+        'freelancer': freelancer,
+        'has_cv': has_cv,
+    })
+
+
+
+

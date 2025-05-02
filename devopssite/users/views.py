@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from .models import User, Role
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from rating.utils import get_average_rating_for_user
 
 def register_view(request):
     if request.method == 'POST':
@@ -50,6 +51,8 @@ def logout_view(request):
 @login_required()
 def get_user(request):
     user = request.user
+    raw_rating = get_average_rating_for_user(int(request.user.id))
+    rating = round(raw_rating) if raw_rating is not None else 0
     context = {
         "id": user.id,
         "name": user.name,
@@ -58,6 +61,7 @@ def get_user(request):
         "phone": user.phone,
         "profile_picture": user.profile_picture,
         "role": user.role.role,
+        "rating": rating,
     }
     return render(request, 'user.page.html', context)
 

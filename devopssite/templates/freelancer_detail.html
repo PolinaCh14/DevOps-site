@@ -6,13 +6,14 @@
     <div class="container">
         <div class="profile-card">
             <div class="profile-header">
-                 {% if freelancer_user.profile_picture is not None %}
+                 {% if profile_picture and profile_picture != 'None' and profile_picture != 'null' %}
                     <img src="{{ freelancer_user.profile_picture }}" alt="Фото профілю" class="profile-picture">
                     {% else %}
                     <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю" class="profile-picture">
                 {% endif %}
                 <div class="profile-info">
                     <h1>{{ freelancer_user.name }} {{ freelancer_user.surname }}</h1>
+                    <h1>{{ freelancer.id }}</h1>
                     {% if user.is_authenticated %}
                     <p><strong>Email:</strong> {{ freelancer_user.email }}</p>
                     <p><strong>Телефон:</strong> {{ freelancer_user.phone }}</p>
@@ -22,6 +23,7 @@
                     <p><strong>Про себе:</strong> {{ freelancer_user.about_me }}</p>
                     <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
                     <p><strong>CV:</strong> {{ freelancer.cv }}</p>
+                    <p><strong>Рейтинг:</strong> {{ rating }}</p>
                 </div>
             </div>
         </div>
