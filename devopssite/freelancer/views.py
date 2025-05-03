@@ -97,6 +97,8 @@ def freelancer_list(request):
     skill_id = request.GET.get('skill')
     experience = request.GET.get('experience')
     experience_filter = request.GET.get('experience_filter')
+    rating = request.GET.get('rating')
+    rating_filter = request.GET.get('rating_filter')
 
     if name:
         freelancers = freelancers.filter(
@@ -128,6 +130,29 @@ def freelancer_list(request):
                 freelancers = freelancers.filter(**{
                     experience_filters[experience_filter]: experience
                 })
+        except ValueError:
+            pass
+
+    rating = request.GET.get('rating')
+    rating_filter = request.GET.get('rating_filter')
+
+    if rating and rating_filter:
+        try:
+            rating = float(rating)
+            ops = {
+                'lt': lambda r: r < rating,
+                'lte': lambda r: r <= rating,
+                'eq': lambda r: r == rating,
+                'gte': lambda r: r >= rating,
+                'gt': lambda r: r > rating,
+            }
+
+            if rating_filter in ops:
+                freelancers = [
+                    f for f in freelancers
+                    if (raw := get_average_rating_for_user(f.id_user.id)) is not None
+                       and ops[rating_filter](raw)
+                ]
         except ValueError:
             pass
 
