@@ -7,10 +7,18 @@
 <body>
 <div class="page-wrapper">
 
-    <!-- Меню навігації зверху -->
     {% include "user_menu.html" %}
 
-    <!-- Контейнер профілю -->
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li class="{% if message.tags == 'error' %}error-message{% elif message.tags == 'success' %}success-message{% else %}info-message{% endif %}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
     <div class="profile-container">
         <h2>Проєкт</h2>
 

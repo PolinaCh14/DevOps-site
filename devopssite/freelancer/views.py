@@ -6,6 +6,10 @@ from users.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from rating.utils import get_average_rating_for_user
+from django.http import JsonResponse
+from .utils import analyze_resume
+import markdown
+
 
 def get_all_portfolio(request, freelancer_id):
     portfolio = Portfolio.objects.filter(id_freelancer = freelancer_id)
@@ -93,6 +97,8 @@ def freelancer_list(request):
     skill_id = request.GET.get('skill')
     experience = request.GET.get('experience')
     experience_filter = request.GET.get('experience_filter')
+    rating = request.GET.get('rating')
+    rating_filter = request.GET.get('rating_filter')
 
     if name:
         freelancers = freelancers.filter(
@@ -124,6 +130,29 @@ def freelancer_list(request):
                 freelancers = freelancers.filter(**{
                     experience_filters[experience_filter]: experience
                 })
+        except ValueError:
+            pass
+
+    rating = request.GET.get('rating')
+    rating_filter = request.GET.get('rating_filter')
+
+    if rating and rating_filter:
+        try:
+            rating = float(rating)
+            ops = {
+                'lt': lambda r: r < rating,
+                'lte': lambda r: r <= rating,
+                'eq': lambda r: r == rating,
+                'gte': lambda r: r >= rating,
+                'gt': lambda r: r > rating,
+            }
+
+            if rating_filter in ops:
+                freelancers = [
+                    f for f in freelancers
+                    if (raw := get_average_rating_for_user(f.id_user.id)) is not None
+                       and ops[rating_filter](raw)
+                ]
         except ValueError:
             pass
 
@@ -313,3 +342,38 @@ def delete_portfolio_item(request, item_id):
     return render(request, 'portfolio_confirm_delete.html', {
         'item': portfolio_item
     })
+
+
+
+def render_resume_feedback(raw_markdown):
+    html = markdown.markdown(raw_markdown, extensions=['fenced_code'])
+    return html
+
+
+@login_required
+def analyze_resume_view(request):
+    freelancer = get_object_or_404(Freelancer, id_user=request.user)
+
+    if request.method == "POST":
+        pass
+        cv_url = freelancer.cv
+        if not cv_url:
+            return JsonResponse({"error": "CV не знайдено."}, status=400)
+
+        try:
+            analysis_result = analyze_resume(cv_url, int(freelancer.id))
+            rendered_html = render_resume_feedback(analysis_result)
+            return JsonResponse({"analysis": rendered_html})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    # GET-запит
+    has_cv = bool(freelancer.cv)
+    return render(request, 'analyze_resume.html', {
+        'freelancer': freelancer,
+        'has_cv': has_cv,
+    })
+
+
+
+

@@ -22,7 +22,11 @@
                     {% endif %}
                     <p><strong>Про себе:</strong> {{ freelancer_user.about_me }}</p>
                     <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
-                    <p><strong>CV:</strong> {{ freelancer.cv }}</p>
+                    {% if freelancer.cv %}
+                    <p><strong>CV:</strong> <a href="{{ freelancer.cv }}" class="btn-link">Переглянути резюме</a></p>
+                    {% else %}
+                    <p><strong>CV:</strong> Ще не завантажено фрілансером</p>
+                    {% endif %}
                     <p><strong>Рейтинг:</strong> {{ rating }}</p>
                 </div>
             </div>

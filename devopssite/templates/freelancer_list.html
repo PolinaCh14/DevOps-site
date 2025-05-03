@@ -6,7 +6,6 @@
         <h1 class="page-title">Пошук фрілансерів</h1>
 
         <div class="content-layout">
-            <!-- Блок фільтрів -->
             <form method="get" class="filter-form sidebar">
                 <h3>Фільтри</h3>
 
@@ -53,6 +52,23 @@
                         <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
                         <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
                         <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Рейтинг:</label>
+                    <input type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Фільтр рейтингу:</label>
+                    <select name="rating_filter">
+                        <option value="">--</option>
+                        <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
+                        <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
+                        <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
+                        <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
+                        <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
                     </select>
                 </div>
 

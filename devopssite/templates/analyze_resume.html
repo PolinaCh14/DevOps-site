@@ -1,0 +1,97 @@
+{% extends "header.html" %}
+{% block content %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Аналіз Резюме</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .centered {
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #analyze-form {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #1e6b1e;
+            color: white;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #2a8f2a;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #143a06;
+            white-space: pre-wrap;
+            color: white;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+ {% include "user_menu.html" %}
+
+<div class="centered">
+    <h2>Аналіз резюме</h2>
+
+    {% if has_cv %}
+        <p>Ваше резюме знайдено. Натисніть кнопку нижче, щоб запустити аналіз:</p>
+        <form method="post" id="analyze-form">
+            {% csrf_token %}
+            <button type="submit">🔍 Аналізувати резюме</button>
+        </form>
+        <div id="result"></div>
+    {% else %}
+        <p style="color: red;">Ви ще не додали посилання на своє резюме. Додайте CV у профілі, щоб отримати аналіз.</p>
+    {% endif %}
+</div>
+
+<script>
+document.getElementById('analyze-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const response = await fetch('', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    });
+
+    const data = await response.json();
+    const resultDiv = document.getElementById('result');
+
+    if (data.analysis) {
+        resultDiv.innerHTML = data.analysis;
+    } else {
+        resultDiv.textContent = data.error;
+        resultDiv.style.color = 'red';
+    }
+});
+</script>
+
+</body>
+</html>
+
+{% endblock %}
