@@ -75,6 +75,7 @@ def update_user_profile(request):
         phone = request.POST.get('phone')
         about_me = request.POST.get('about_me')
         profile_picture = request.POST.get('profile_picture')
+        email = request.POST.get('email')
 
         updated = False
 
@@ -98,8 +99,18 @@ def update_user_profile(request):
             user.profile_picture = profile_picture
             updated = True
 
+        if email and email != user.email:
+            if User.objects.filter(email=email).exclude(id=user.id).exists():
+                messages.error(request, 'Користувач з такою електронною поштою вже існує.')
+                return redirect('users:profile')
+            user.email = email
+            updated = True
+
         if updated:
             user.save()
+            messages.success(request, 'Профіль успішно оновлено.')
+        else:
+            messages.info(request, 'Зміни не були внесені.')
 
         return redirect('users:profile')
 

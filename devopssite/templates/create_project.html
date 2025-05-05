@@ -31,7 +31,7 @@
 
             <div class="project-form-group">
                 <label class="project-label">Срок виконання (опціонально):</label>
-                <input type="number" name="execution" class="project-input">
+                <input type="number" name="execution" class="project-input" min="0">
             </div>
 
             <div class="project-form-group">
@@ -41,7 +41,7 @@
 
             <div class="project-form-group">
                 <label class="project-label">Ціна (опціонально):</label>
-                <input type="number" step="0.01" name="price" class="project-input">
+                <input type="number" step="0.01" name="price" class="project-input" min="0">
             </div>
 
             <button type="submit" class="project-submit-btn">Створити проєкт</button>

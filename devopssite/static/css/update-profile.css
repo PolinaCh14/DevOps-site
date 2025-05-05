@@ -22,6 +22,7 @@ label {
     color: var(--secondary-color);
 }
 input[type="text"],
+input[type="email"],
 textarea {
     width: 100%;
     padding: 10px;

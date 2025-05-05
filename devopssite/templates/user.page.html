@@ -8,6 +8,13 @@
 <body>
  {% include "user_menu.html" %}
 <div class="profile-wrapper">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
 
     <div class="profile-container">
         <h2>Профіль</h2>
