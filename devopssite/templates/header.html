@@ -34,6 +34,11 @@
                 <nav class="div-nav__nav">
                     <a href="{% url 'users:profile' %}" class="div-nav__nav-link">Профіль</a>
                 </nav>
+                {% if user.is_authenticated and user.role.id == 1%}
+                <nav class="div-nav__nav">
+                    <a href="{% url 'adminp:all_users' %}" class="div-nav__nav-link">Адмін панель</a>
+                </nav>
+                {% endif %}
                 <nav class="div-nav__nav">
                     <a href="{% url 'users:logout' %}" class="div-nav__nav-link">Вийти</a>
                 </nav>

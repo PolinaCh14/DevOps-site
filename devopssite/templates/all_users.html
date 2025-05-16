@@ -1,0 +1,42 @@
+{% extends 'header.html' %}
+
+{% block content %}
+<body>
+<div class="main-wrapper">
+    <main>
+        {% include "admin-menu.html" %}
+    <section class="user-container">
+        <h1>Користувачі</h1>
+
+        <form method="get" class="filter-form">
+            <label for="role">Фільтр за роллю:</label>
+            <select name="role" id="role" onchange="this.form.submit()">
+                <option value="">Усі ролі</option>
+                {% for role in roles %}
+                    <option value="{{ role.role }}" {% if selected_role == role.role %}selected{% endif %}>
+                        {{ role.role }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <label for="surname">Фільтр за прізвищем:</label>
+            <input type="text" name="surname" id="surname" value="{{ selected_surname }}" onchange="this.form.submit()" placeholder="Введіть прізвище">
+
+        </form>
+
+        <div class="users-list">
+            {% for user in users %}
+                <div class="user-card">
+                    <p><strong>Ім’я:</strong> {{ user.name }} {{ user.surname }}</p>
+                    <p><strong>Роль:</strong> {{ user.role.role }}</p>
+                    <a href="{% url 'adminp:user_profile_a' user.id %}" class="profile-btn">Переглянути профіль</a>
+                </div>
+            {% empty %}
+                <p>Користувачів не знайдено.</p>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+</div>
+</body>
+{% endblock %}

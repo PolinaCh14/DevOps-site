@@ -6,7 +6,11 @@
     <title>Профіль користувача</title>
 </head>
 <body>
+{% if request.user.role.id == 1 %}
+{% include "admin-menu.html" %}
+{% else %}
  {% include "user_menu.html" %}
+{% endif %}
 <div class="profile-wrapper">
         {% if messages %}
         {% for message in messages %}
@@ -36,9 +40,23 @@
                     <p><strong>Роль:</strong> {{ role }}</p>
                     <p><strong>Рейтинг:</strong> {{ rating }}</p>
 
+                    {% if request.user.role.id == 1 %}
+                    <div class="update-link">
+                        <a href="{% url 'adminp:update_user_profile_a' id %}">Оновити профіль</a>
+                    </div>
+                    <dt/>
+                    <form method="post" action="{% url 'adminp:delete_user_a' id=id %}" class="update-link">
+                    {% csrf_token %}
+                        <button type="submit" onclick="return confirm('Чи Ви впевнені, що хочете видалити профіль?')">
+                            Видалити профіль
+                        </button>
+                    </form>
+                    {% else %}
                     <div class="update-link">
                         <a href="{% url 'users:update_profile' %}">Оновити профіль</a>
                     </div>
+                    {% endif %}
+
                 </div>
             </div>
         </div>
