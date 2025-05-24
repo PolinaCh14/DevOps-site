@@ -1,0 +1,25 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+ {% include "admin-menu.html" %}
+<main class="work-request-container">
+    <h1 class="section-title">Усі запити на роботу</h1>
+
+    {% if work_requests %}
+        <div class="work-request-grid">
+            {% for work_request in work_requests %}
+                <div class="work-request-card status-{{ request.id_status.id }}">
+                    <h2 class="request-title">
+                        Запит від: {{ work_request.id_freelancer.id_user.name }} {{ request.id_freelancer.id_user.surname }}
+                    </h2>
+                    <p><strong>Проєкт:</strong> {{ work_request.id_project.title }}</p>
+                    <p><strong>Дата створення:</strong> {{ work_request.created_at }}</p>
+                    <p><strong>Статус:</strong> {{ work_request.id_status.status }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="no-requests">Немає активних запитів на роботу.</p>
+    {% endif %}
+</main>
+{% endblock %}

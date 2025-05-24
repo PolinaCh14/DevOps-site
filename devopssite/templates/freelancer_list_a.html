@@ -90,7 +90,7 @@
                                 <p><strong>Про себе:</strong> {{ freelancer.id_user.about_me }}</p>
                                 <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
                                 <p><strong>Статус:</strong> {{ freelancer.id_status.status }}</p>
-                                <a href="{% url 'freelancers:freelancer_detail' freelancer.id %}" class="btn-link">Переглянути профіль</a>
+                                <a href="{% url 'adminp:freelancer_detail_a' freelancer_id=freelancer.id %}" class="btn-link">Переглянути профіль</a>
                             </div>
                         {% endfor %}
                     </div>

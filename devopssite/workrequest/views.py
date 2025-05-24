@@ -58,7 +58,6 @@ def employer_work_request(request):
 
 
 @login_required
-@login_required
 def change_request_status(request, project_id, freelancer_id):
     if request.method == 'POST':
         status_id = request.POST.get('status_id')

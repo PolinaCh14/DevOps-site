@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from freelancer.models import Freelancer, FreelancerStatus, FreelancerSkill, Portfolio
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from workrequest.models import WorkRequest, WorkRequestStatus
 from users.models import User, Role
 from rating.utils import get_average_rating_for_user
 from project.models import Project, ProjectSkill, Status
@@ -304,3 +305,142 @@ def freelancer_list(request):
     }
 
     return render(request, 'freelancer_list_a.html', context)
+
+def freelancer_detail(request, freelancer_id):
+    freelancer = get_object_or_404(
+        Freelancer.objects.select_related('id_user', 'id_status'),
+        id=freelancer_id
+    )
+    raw_rating = get_average_rating_for_user(int(freelancer.id_user.id))
+    rating = round(raw_rating) if raw_rating is not None else 0
+    skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
+    portfolio = freelancer.portfolio_set.all()
+
+    return render(request, 'freelancer_detail_a.html', {
+        'freelancer': freelancer,
+        'freelancer_user': freelancer.id_user,
+        'skills': skills,
+        'portfolio': portfolio,
+        'rating': rating,
+    })
+
+
+
+@login_required
+def update_freelancer_profile(request, freelancer_id):
+    freelancer = get_object_or_404(Freelancer, id=freelancer_id)
+    statuses = FreelancerStatus.objects.all()
+    all_skills = Skill.objects.all()
+
+    if request.method == 'POST':
+        freelancer.cv = request.POST.get('cv', '')
+        try:
+            freelancer.experience = int(request.POST.get('experience', 0))
+        except ValueError:
+            pass
+
+        status_id = request.POST.get('status')
+        if status_id:
+            try:
+                freelancer.id_status_id = int(status_id)
+            except ValueError:
+                pass
+
+        freelancer.save()
+
+        selected_skill_ids = request.POST.getlist('skills')
+
+        FreelancerSkill.objects.filter(id_freelancer=freelancer).delete()
+
+        for skill_id in selected_skill_ids:
+            try:
+                skill_obj = Skill.objects.get(id=int(skill_id))
+                FreelancerSkill.objects.create(id_freelancer=freelancer, id_skill=skill_obj)
+            except (Skill.DoesNotExist, ValueError):
+                continue
+
+        return redirect('adminp:freelancer_detail_a', freelancer_id=freelancer.id)
+
+    existing_skill_ids = FreelancerSkill.objects.filter(id_freelancer=freelancer).values_list('id_skill_id', flat=True)
+
+    return render(request, 'freelancer_profile_edit.html', {
+        'freelancer': freelancer,
+        'statuses': statuses,
+        'skills': all_skills,
+        'existing_skill_ids': existing_skill_ids,
+    })
+
+@login_required
+def create_portfolio_item(request, freelancer_id):
+    freelancer = get_object_or_404(Freelancer, id=freelancer_id)
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        photo = request.POST.get('photo', '').strip()
+        url = request.POST.get('url', '').strip()
+
+        if title:
+            Portfolio.objects.create(
+                id_freelancer=freelancer,
+                title=title,
+                description=description,
+                photo=photo,
+                url=url
+            )
+            return redirect('adminp:freelancer_detail_a', freelancer_id=freelancer.id)
+
+    return render(request, 'portfolio_create.html')
+
+
+@login_required
+def update_portfolio_item(request, item_id):
+    portfolio_item = get_object_or_404(Portfolio, id=item_id)
+
+    if request.method == 'POST':
+        portfolio_item.title = request.POST.get('title', '').strip()
+        portfolio_item.description = request.POST.get('description', '').strip()
+        portfolio_item.photo = request.POST.get('photo', '').strip()
+        portfolio_item.url = request.POST.get('url', '').strip()
+        portfolio_item.save()
+
+        return redirect('adminp:get_user_portfolio_a', portfolio_id=portfolio_item.id)
+
+    return render(request, 'portfolio_update.html', {
+        'item': portfolio_item
+    })
+
+@login_required
+def delete_portfolio_item(request, item_id):
+    portfolio_item = get_object_or_404(Portfolio, id=item_id)
+
+    if request.method == 'POST':
+        portfolio_item.delete()
+        return redirect('adminp:freelancer_list_a')
+
+    return render(request, 'portfolio_confirm_delete.html', {
+        'item': portfolio_item
+    })
+
+
+def get_user_portfolio(request, portfolio_id):
+    portfolio = get_object_or_404(Portfolio, id=portfolio_id)
+    freelancer = get_object_or_404(Freelancer, id=portfolio.id_freelancer.id)
+    return render(request, 'user_portfolio_a.html', {'portfolio': portfolio, 'freelancer': freelancer})
+
+
+@login_required
+def all_work_request(request):
+
+    work_requests = WorkRequest.objects.all()
+
+    statuses = WorkRequestStatus.objects.all()
+
+    return render(
+        request,
+        'all_work_request.html',
+        {
+            'work_requests': work_requests,
+            'statuses': statuses,
+        }
+    )
