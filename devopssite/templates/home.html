@@ -1,5 +1,41 @@
 {% extends 'header.html' %}
+{% load static %}
 
 {% block content %}
-    <h1 style="text-align:center; margin-top: 50px;">Вітаємо на нашому сайті!</h1>
+<div class="home-container">
+
+    <section class="hero-section">
+        <h1>Вітаємо на DevOpsIK!</h1>
+        <p>Платформа №1 для пошуку фріланс-замовлень у сфері DevOps та хмарних технологій</p>
+        <img src="https://shalb.com/wp-content/uploads/2019/11/Devops1.jpeg"
+     alt="DevOps teamwork" class="hero-image">
+
+    </section>
+
+    <section class="about-section">
+        <h2>Що це за сайт?</h2>
+        <p>
+            DevOpsIK — це платформа, що об'єднує DevOps-фахівців та роботодавців. Ми створили цей ресурс для того, щоб спеціалісти могли швидко знаходити замовлення, демонструвати свої навички та розвиватися в професійній спільноті.
+        </p>
+    </section>
+
+    <section class="features-section">
+        <h2>Чому варто обрати саме нас?</h2>
+        <ul>
+            <li>🔧 Доступ до найсвіжіших проєктів у галузі DevOps та AWS</li>
+            <li>📄 Можливість отримати поради щодо поліпшення резюме</li>
+            <li>🤝 Підбір замовлень відповідно до вашого стеку та досвіду</li>
+            <li>📊 Відгуки замовників та рейтинги виконавців</li>
+            <li>💬 Професійне ком'юніті для обміну досвідом</li>
+        </ul>
+        <img src="https://media.licdn.com/dms/image/v2/D4E10AQFD9HLaPF2XJA/image-shrink_1280/image-shrink_1280/0/1680850810018?e=2147483647&v=beta&t=cjwiGx3bqjpjnHfMKmaaj68J3T7trEPSxl8CCb1DTVg" alt="Resume tips" class="feature-image">
+    </section>
+
+    <section class="cta-section">
+        <h2>Приєднуйся сьогодні</h2>
+        <p>Зареєструйся та зроби перший крок до кар’єри DevOps-фрілансера прямо зараз!</p>
+        <a href="{% url 'users:register' %}" class="cta-button">Зареєструватися</a>
+    </section>
+
+</div>
 {% endblock %}

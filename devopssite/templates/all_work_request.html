@@ -1,25 +1,53 @@
 {% extends "header.html" %}
 {% load static %}
 {% block content %}
- {% include "admin-menu.html" %}
+{% include "admin-menu.html" %}
+
 <main class="work-request-container">
-    <h1 class="section-title">Усі запити на роботу</h1>
+    <h1 class="section-title">Усі запити на співпрацю</h1>
+
+    <form method="get" class="status-filter-form">
+        <label for="status">Фільтрувати за статусом:</label>
+        <select name="status" id="status" onchange="this.form.submit()">
+            <option value="">-- Усі статуси --</option>
+            {% for status in statuses %}
+                <option value="{{ status.id }}" {% if status.id == selected_status %}selected{% endif %}>
+                    {{ status.status }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
 
     {% if work_requests %}
         <div class="work-request-grid">
             {% for work_request in work_requests %}
-                <div class="work-request-card status-{{ request.id_status.id }}">
+                <div class="work-request-card status-{{ work_request.id_status.id }}">
                     <h2 class="request-title">
-                        Запит від: {{ work_request.id_freelancer.id_user.name }} {{ request.id_freelancer.id_user.surname }}
+                        Запит від:
+                        {% if work_request.id_freelancer %}
+                            {{ work_request.id_freelancer.id_user.name }} {{ work_request.id_freelancer.id_user.surname }}
+                        {% else %}
+                            <em>Невідомий фрілансер</em>
+                        {% endif %}
                     </h2>
-                    <p><strong>Проєкт:</strong> {{ work_request.id_project.title }}</p>
+                    <p><strong>Проєкт:</strong>
+                        {% if work_request.id_project %}
+                            {{ work_request.id_project.name }}
+                        {% else %}
+                            <em>Не вказано</em>
+                        {% endif %}
+                    </p>
                     <p><strong>Дата створення:</strong> {{ work_request.created_at }}</p>
                     <p><strong>Статус:</strong> {{ work_request.id_status.status }}</p>
+                    <div class="action-buttons">
+                        <a href="{% url 'adminp:update_work_request_a' work_request.id %}" class="btn edit-btn">Редагувати</a>
+                        <a href="{% url 'adminp:delete_work_request_a' work_request.id %}" class="btn delete-btn">Видалити</a>
+                    </div>
                 </div>
             {% endfor %}
         </div>
     {% else %}
-        <p class="no-requests">Немає активних запитів на роботу.</p>
+        <p class="no-requests">Немає запитів для обраного статусу.</p>
     {% endif %}
 </main>
 {% endblock %}

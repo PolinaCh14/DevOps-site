@@ -3,7 +3,8 @@ from .views import (get_all_user, user_profile, update_user_profile,
                     delete_user, update_project, projects_search_view,
                     freelancer_list, freelancer_detail, update_freelancer_profile,
                     create_portfolio_item, update_portfolio_item, delete_portfolio_item,
-                    get_user_portfolio, all_work_request)
+                    get_user_portfolio, all_work_request, update_work_request,
+                    delete_work_request)
 
 app_name = 'adminp'
 
@@ -22,6 +23,9 @@ urlpatterns = [
     path('delete_portfolio_item/<int:item_id>/', delete_portfolio_item, name="delete_portfolio_item_a"),
     path('get_user_portfolio/<int:portfolio_id>/', get_user_portfolio, name="get_user_portfolio_a"),
     path('all_work_request/', all_work_request, name="all_work_request_a"),
+    path('update_work_request/<int:work_request_id>/', update_work_request, name="update_work_request_a"),
+    path('work-request/delete/<int:work_request_id>/', delete_work_request, name='delete_work_request_a'),
+
 
 
 ]

@@ -1,0 +1,17 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+{% include "admin-menu.html" %}
+
+<div class="delete-confirmation">
+    <h2>Видалення ворк-реквесту</h2>
+    <p>Ви впевнені, що хочете видалити запит від фрілансера <strong>{{ work_request.id_freelancer.surname }}</strong> до проєкту <strong>{{ work_request.id_project.name }}</strong>?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Так, видалити</button>
+        <a href="{% url 'adminp:all_work_request_a' %}" class="btn btn-cancel">Скасувати</a>
+    </form>
+</div>
+
+{% endblock %}
