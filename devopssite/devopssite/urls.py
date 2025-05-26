@@ -10,4 +10,5 @@ urlpatterns = [
     path('freelancers/', include('freelancer.urls')),
     path('workrequest/', include('workrequest.urls')),
     path('rating/', include('rating.urls')),
+    path('adminp/', include('adminpannel.urls'))
 ]

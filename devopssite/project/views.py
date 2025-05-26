@@ -197,6 +197,8 @@ def create_project(request):
 def project_delete(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     project.delete()
+    if request.user.role.id == 1:
+        return redirect('adminp:projects_search_view_a')
     return redirect('projects:user_projects_search_view')
 
 

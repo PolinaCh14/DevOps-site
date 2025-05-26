@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'rating',
     'workrequest',
     'notification',
+    'adminpannel',
 
     'rest_framework',
     'rest_framework_simplejwt',

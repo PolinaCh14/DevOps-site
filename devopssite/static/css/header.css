@@ -72,7 +72,7 @@
     }
 }
 
-@media only screen and (max-width: 764px) {
+@media only screen and (max-width: 819px) {
     .hamburger {
         display: block;
     }

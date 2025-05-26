@@ -10,9 +10,6 @@ from .tasks import (
     send_notification_email,
 )
 
-
-
-
 @receiver(post_save, sender=WorkRequest)
 def create_notification_on_work_request(sender, instance, created, **kwargs):
     if not created:
@@ -41,6 +38,9 @@ def create_notification_on_work_request(sender, instance, created, **kwargs):
 @receiver(post_save, sender=WorkRequest)
 def notify_freelancer_on_status_change(sender, instance, created, **kwargs):
     if created:
+        return
+
+    if not instance.id_freelancer or not instance.id_freelancer.id_user:
         return
 
     freelancer = instance.id_freelancer.id_user

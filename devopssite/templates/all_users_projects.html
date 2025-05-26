@@ -4,14 +4,23 @@
     <body>
 <div class="main-wrapper">
 
-    {% include "user_menu.html" %}
+    {% if request.user.role.id == 1 %}
+        {% include "admin-menu.html" %}
+    {% else %}
+        {% include "user_menu.html" %}
+    {% endif %}
 
     <h1>Усі проєкти</h1>
 
     <div class="container_for_project">
         <!-- Форма фільтрації -->
         <div class="filter-sidebar">
-            <form method="get" action="{% url 'projects:user_projects_search_view' %}">
+            <form method="get"
+                  action="{% if request.user.role.id == 1 %}
+                              {% url 'adminp:projects_search_view_a' %}
+                          {% else %}
+                              {% url 'projects:user_projects_search_view' %}
+                          {% endif %}">
                 <label>Назва проєкту:</label><br>
                 <input type="text" name="name" value="{{ request.GET.name }}"><br><br>
 

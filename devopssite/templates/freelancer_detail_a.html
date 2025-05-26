@@ -1,0 +1,62 @@
+{% extends 'header.html' %}
+
+{% block content %}
+{% load static %}
+<body>
+    {% include "admin-menu.html" %}
+    <div class="container">
+        <div class="profile-card">
+            <div class="profile-header">
+                 {% if profile_picture and profile_picture != 'None' and profile_picture != 'null' %}
+                    <img src="{{ freelancer_user.profile_picture }}" alt="Фото профілю" class="profile-picture">
+                    {% else %}
+                    <img src="{% static 'photo/default_profile.png' %}" alt="Фото профілю" class="profile-picture">
+                {% endif %}
+                <div class="profile-info">
+                    <h1>{{ freelancer_user.name }} {{ freelancer_user.surname }}</h1>
+                    {% if user.is_authenticated %}
+                    <p><strong>Email:</strong> {{ freelancer_user.email }}</p>
+                    <p><strong>Телефон:</strong> {{ freelancer_user.phone }}</p>
+                    {% else %}
+                    <p>Для того, щоб переглянути контактні дані треба авторизуватися</p>
+                    {% endif %}
+                    <p><strong>Про себе:</strong> {{ freelancer_user.about_me }}</p>
+                    <p><strong>Досвід:</strong> {{ freelancer.experience }} років</p>
+                    {% if freelancer.cv %}
+                    <p><strong>CV:</strong> <a href="{{ freelancer.cv }}" class="btn-link">Переглянути резюме</a></p>
+                    {% else %}
+                    <p><strong>CV:</strong> Ще не завантажено фрілансером</p>
+                    {% endif %}
+                    <p><strong>Рейтинг:</strong> {{ rating }}</p>
+                    <p><strong>Статус:</strong> {{ freelancer.status_id.status }}</p>
+                    <a href="{% url 'adminp:update_freelancer_profile_a' freelancer_id=freelancer.id %}" class="portfolio-link">Оновити профіль</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="skills-section">
+            <h3>Навички</h3>
+            <ul class="skill-list">
+                {% for skill in skills %}
+                    <li>{{ skill.id_skill.skill }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="portfolio-section">
+            <h3>Портфоліо</h3>
+            <a href="{% url 'adminp:create_portfolio_item_a' freelancer_id=freelancer.id %}" class="portfolio-link">Створити проєкт</a>
+            <div class="portfolio-grid">
+                {% for item in portfolio %}
+                    <div class="portfolio-card">
+                        <h4>{{ item.title }}</h4>
+                        <p>{{ item.description }}</p>
+                        <a href="{% url 'adminp:get_user_portfolio_a' item.id %}" class="portfolio-link">Переглянути проєкт</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+
+{% endblock %}
