@@ -1,0 +1,76 @@
+{% extends "header.html" %}
+{% load static %}
+{% block content %}
+<body>
+    <div class="chat-wrapper">
+        <main class="chat-container">
+            <h2 class="chat-title">Чат з користувачем {{ other_user.name }}</h2>
+
+            <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Журнал повідомлень">
+                <!-- Повідомлення -->
+            </div>
+
+            <form id="chat-form" class="chat-form" action="javascript:void(0);">
+                <input type="text" id="chat-message-input" class="chat-input" placeholder="Введіть повідомлення..." autocomplete="off" aria-label="Введіть повідомлення" />
+                <button id="chat-message-submit" class="chat-submit" type="submit">Відправити</button>
+            </form>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const receiverId = "{{ other_user.id }}";
+
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/' + receiverId + '/'
+        );
+
+        chatSocket.onopen = function() {
+            console.log('WebSocket connection established.');
+        };
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const chatLog = document.querySelector('#chat-log');
+
+            if (!chatLog) {
+                console.error('Element #chat-log not found');
+                return;
+            }
+
+            const messageElement = document.createElement('p');
+            const time = data.timestamp ? ' <span class="chat-timestamp">[' + data.timestamp + ']</span>' : '';
+            messageElement.innerHTML = '<strong>' + data.sender + '</strong>: ' + data.message + time;
+
+            chatLog.appendChild(messageElement);
+
+            if (!data.history) {
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        const submitBtn = document.querySelector('#chat-message-submit');
+        const messageInputDom = document.querySelector('#chat-message-input');
+
+        if (submitBtn && messageInputDom) {
+            submitBtn.onclick = function(e) {
+                const message = messageInputDom.value.trim();
+
+                if (message === '') return;
+
+                chatSocket.send(JSON.stringify({ 'message': message }));
+
+                messageInputDom.value = '';
+            };
+        } else {
+            console.error('Submit button or message input not found');
+        }
+    });
+    </script>
+</body>
+</html>
+{% endblock %}
