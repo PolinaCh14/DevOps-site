@@ -28,6 +28,13 @@
                     <p><strong>CV:</strong> Ще не завантажено фрілансером</p>
                     {% endif %}
                     <p><strong>Рейтинг:</strong> {{ rating }}</p>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'chat_page' freelancer_user.id %}" class="chat-link">
+                            Написати
+                        </a>
+                    {% else %}
+                        <p>Для того, щоб написати, потрібно бути авторизованим користувачум сайту</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

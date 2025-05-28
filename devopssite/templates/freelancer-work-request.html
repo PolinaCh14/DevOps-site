@@ -1,7 +1,6 @@
 {% extends "header.html" %}
 {% load static %}
 {% block content %}
-<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -56,7 +55,13 @@
                                     </select>
                                 </td>
                                 <td class="work-request__cell" data-label="Дата створення">{{ requests.created_at }}</td>
+
                                 <td class="work-request__cell" data-label="Дія">
+                                    <button type="submit" class="work-request__button">
+                                        <a href="{% url 'chat_page' requests.id_freelancer.id %}" class="work-request__button">
+                                            Написати
+                                        </a></button>
+
                                     <button type="submit" class="work-request__button">Змінити</button>
                                 </td>
                             </tr>

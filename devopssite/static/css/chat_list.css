@@ -1,0 +1,94 @@
+.chat-list-container {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.chat-list-title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.chat-search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.chat-search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 0.5rem;
+    border: 2px solid var(--secondary-color);
+    border-radius: 8px;
+    background-color: #fff;
+}
+
+.chat-search-button {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.chat-search-button:hover {
+    background-color: var(--secondary-color);
+}
+
+.chat-list {
+    list-style: none;
+    padding: 0;
+}
+
+.chat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--secondary-text-color);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+    color: var(--light-text-color);
+    flex-wrap: wrap;
+}
+
+.chat-link {
+    color: var(--primary-text-color);
+    text-decoration: none;
+    font-weight: bold;
+    margin-right: 1rem;
+}
+
+.chat-link:hover {
+    text-decoration: underline;
+    color: var(--link-text-color);
+}
+
+.delete-chat-form {
+    margin-top: 0.5rem;
+}
+
+.delete-chat-button {
+    background-color: #ff5c5c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+}
+
+.delete-chat-button:hover {
+    background-color: #d43c3c;
+}
+
+.chat-empty {
+    text-align: center;
+    color: var(--secondary-color);
+    font-style: italic;
+}
