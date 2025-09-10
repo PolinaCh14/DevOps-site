@@ -24,6 +24,7 @@ AUTH_USER_MODEL = 'users.User'
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,6 +40,8 @@ INSTALLED_APPS = [
     'workrequest',
     'notification',
     'adminpannel',
+    'channels',
+    'chat',
 
     'rest_framework',
     'rest_framework_simplejwt',
@@ -55,6 +58,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+ASGI_APPLICATION = 'devopssite.asgi.application'
+
 ROOT_URLCONF = 'devopssite.urls'
 
 LOGIN_URL = '/users/login/'
@@ -63,6 +68,15 @@ STATIC_URL = '/static'
 STATICFILES_DIRS = (
   os.path.join(BASE_DIR, 'static/'),
 )
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 TEMPLATES = [
     {
