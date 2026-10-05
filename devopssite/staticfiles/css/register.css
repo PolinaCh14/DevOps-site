@@ -1,0 +1,75 @@
+.register-container {
+    max-width: 500px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: var(--light-text-color);
+    border: 2px solid var(--secondary-text-color);
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.register-form input,
+.register-form textarea,
+.register-form button,
+.register-form select{
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid var(--background-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.register-form input:focus,
+.register-form textarea:focus {
+    border-color: var(--secondary-color);
+    outline: none;
+}
+
+.register-form button {
+    background-color: var(--secondary-color);
+    color: var(--primary-text-color);
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.register-form button:hover {
+    background-color: var(--primary-color);
+}
+
+.error {
+    border-color: red !important;
+    background-color: #ffe5e5;
+}
+
+.error-message {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 4px;
+    display: none;
+}
+
+.auth-link {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.auth-link a {
+    color: var(--link-text-color);
+    text-decoration: none;
+}
+
+.auth-link a:hover {
+    text-decoration: underline;
+}
+
+.alert {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+}

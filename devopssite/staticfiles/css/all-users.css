@@ -1,0 +1,60 @@
+.user-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+.filter-form {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-form select {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid var(--secondary-color);
+    background-color: #fff;
+}
+
+.users-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.user-card {
+    background-color: var(--secondary-color);
+    color: var(--primary-text-color);
+    padding: 15px 20px;
+    border-radius: 8px;
+    width: 280px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.user-card p {
+    margin-bottom: 8px;
+}
+
+.profile-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.profile-btn:hover {
+    background-color: #0e250b;
+}

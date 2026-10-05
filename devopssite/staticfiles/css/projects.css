@@ -1,0 +1,97 @@
+.main-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.container_for_project {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.filter-sidebar {
+    width: 250px;
+    padding: 20px;
+    background-color: #fffaf1;
+    border-radius: 10px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+.project-list {
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: flex-start;
+}
+
+.project-card {
+    background-color: #fffefb;
+    border: 1px solid #d6b28d;
+    border-radius: 10px;
+    padding: 15px;
+    width: calc(33.333% - 20px);
+    min-width: 250px;
+}
+.project-status{
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.btn-view {
+    display: inline-block;
+    background-color: #2e5e2e;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    /*font-weight: bold;*/
+    transition: background-color 0.3s ease;
+}
+
+.btn-view:hover {
+    background-color: #1f401f;
+    color: #fff;
+}
+
+.btn-view-two{
+    display: inline-block;
+    background-color: #2e5e2e;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    /*font-weight: bold;*/
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+.filter-sidebar label {
+    font-weight: bold;
+    color: #4e3b2f;
+    margin-bottom: 5px;
+    display: inline-block;
+}
+
+.filter-sidebar select,
+.filter-sidebar input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #c8b7a6;
+    border-radius: 6px;
+    background-color: #fffdf8;
+    font-size: 14px;
+    color: #3b2d20;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.filter-sidebar select:focus,
+.filter-sidebar input[type="number"]:focus {
+    outline: none;
+    border-color: #a57c4f;
+    background-color: #fffaf1;
+}
