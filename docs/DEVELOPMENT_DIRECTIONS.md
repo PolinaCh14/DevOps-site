@@ -103,3 +103,4 @@ The selection criteria implicit in the current documentation are:
 These directions are provisional and should be reviewed against the actual repository state before being adopted as the final master’s scope.
 
 See [BASELINE.md](BASELINE.md) for the concise inherited baseline and [ARCHITECTURE.md](ARCHITECTURE.md) for the architecture background.
+Testing, CI/CD, containerization, and validation improvements are treated as cross-cutting supporting activities and are described separately in [TESTING_DEVOPS_BASELINE.md](TESTING_DEVOPS_BASELINE.md).

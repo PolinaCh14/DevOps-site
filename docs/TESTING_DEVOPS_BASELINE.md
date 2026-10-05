@@ -152,3 +152,32 @@ The repository does not reliably confirm the following:
 - the actual runtime environment for PostgreSQL, Redis, SMTP, and AI endpoint configuration.
 
 See [BASELINE.md](BASELINE.md) for the concise project baseline and [ARCHITECTURE.md](ARCHITECTURE.md) for the architecture and domain model details.
+
+
+## 13. Planned Supporting DevOps and Validation Improvements
+
+The following improvements are planned as supporting activities for the agent-driven development cycles in the master's research.
+
+These activities are not treated as an independent business-feature development direction. Instead, they provide the technical validation and reproducibility layer required for the selected system development changes.
+
+Planned improvements may include:
+
+- expanding automated test coverage for the modules affected by selected development tasks;
+- introducing repeatable test execution;
+- adding CI-based automated validation;
+- adding containerization where it is useful for reproducible execution;
+- collecting test results and validation evidence for each agent-driven change;
+- adding regression protection for previously accepted functionality;
+- introducing linting or formatting checks if they are useful for the selected workflow.
+
+These improvements should be introduced incrementally alongside the selected development cycles rather than as a separate standalone system feature.
+
+### Expected research value
+
+The DevOps and validation improvements support evaluation of:
+
+- reproducibility of agent-generated changes;
+- regression safety;
+- repeatability of validation;
+- traceability between implementation and evidence;
+- reliability of the acceptance process.
