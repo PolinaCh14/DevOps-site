@@ -22,7 +22,6 @@ class Project(models.Model):
         db_table = 'project'
 
 
-
 class ProjectSkill(models.Model):
     id_skill = models.ForeignKey('skill.Skill', models.DO_NOTHING, db_column='id_skill')
     id_project = models.ForeignKey(Project, models.CASCADE, db_column='id_project')
