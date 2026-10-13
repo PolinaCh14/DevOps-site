@@ -1,0 +1,23 @@
+git status --short; git rev-parse HEAD; git describe --tags --exact-match HEAD 2>$null; git tag --points-at HEAD
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+git diff --check; git diff --stat; git status --short; git diff -- devopssite\freelancer\views.py devopssite\adminpannel\views.py devopssite\freelancer\tests.py devopssite\templates\freelancer_list.html devopssite\templates\freelancer_list_a.html
+
+git diff --binary -- devopssite\freelancer\views.py devopssite\adminpannel\views.py devopssite\freelancer\tests.py devopssite\templates\freelancer_list.html devopssite\templates\freelancer_list_a.html > experiments\change-01-freelancer-filtering\evidence\diff.patch
+
+git diff --binary --output=experiments\change-01-freelancer-filtering\evidence\diff.patch -- devopssite\freelancer\views.py devopssite\adminpannel\views.py devopssite\freelancer\tests.py devopssite\static\css\freelancers.css devopssite\templates\freelancer_list.html devopssite\templates\freelancer_list_a.html
+
+git diff --binary --output=experiments\change-01-freelancer-filtering\evidence\diff.patch -- devopssite\freelancer\views.py devopssite\adminpannel\views.py devopssite\freelancer\tests.py devopssite\static\css\freelancers.css devopssite\templates\freelancer_list.html devopssite\templates\freelancer_list_a.html
+
+git diff --check

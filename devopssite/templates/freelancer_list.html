@@ -6,17 +6,17 @@
         <h1 class="page-title">Пошук фрілансерів</h1>
 
         <div class="content-layout">
-            <form method="get" class="filter-form sidebar">
+            <form method="get" class="filter-form sidebar freelancer-filter-form">
                 <h3>Фільтри</h3>
 
                 <div class="form-group">
-                    <label>Ім'я або прізвище:</label>
-                    <input type="text" name="name" value="{{ request.GET.name }}">
+                    <label for="freelancer-name">Ім'я або прізвище:</label>
+                    <input id="freelancer-name" type="text" name="name" value="{{ request.GET.name }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Статус:</label>
-                    <select name="status">
+                    <label for="freelancer-status">Статус:</label>
+                    <select id="freelancer-status" name="status">
                         <option value="">Усі</option>
                         {% for status in statuses %}
                             <option value="{{ status.id }}" {% if request.GET.status == status.id|stringformat:"s" %}selected{% endif %}>
@@ -26,49 +26,81 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label>Навичка:</label>
-                    <select name="skill">
-                        <option value="">Усі</option>
-                        {% for skill in skills %}
-                            <option value="{{ skill.id }}" {% if request.GET.skill == skill.id|stringformat:"s" %}selected{% endif %}>
-                                {{ skill.skill }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                <div class="filter-group-box">
+                    <div class="form-group">
+                        <label>Навички:</label>
+                        <p class="skill-picker-count">Обрано: {{ selected_skill_ids|length }}</p>
+                        <div class="skill-picker-options">
+                            {% for skill in skills %}
+                                <label class="skill-picker-option" for="freelancer-skill-{{ skill.id }}">
+                                    <input
+                                        id="freelancer-skill-{{ skill.id }}"
+                                        type="checkbox"
+                                        name="skill"
+                                        value="{{ skill.id }}"
+                                        {% if skill.id|stringformat:"s" in selected_skill_ids %}checked{% endif %}
+                                    >
+                                    <span>{{ skill.skill }}</span>
+                                </label>
+                            {% empty %}
+                                <p class="skill-picker-empty">Навичок поки немає.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="skill-mode">Збіг навичок:</label>
+                        <select id="skill-mode" name="skill_mode">
+                            <option value="any" {% if skill_mode == "any" %}selected{% endif %}>Будь-яка з вибраних</option>
+                            <option value="all" {% if skill_mode == "all" %}selected{% endif %}>Усі вибрані</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-pair">
+                    <div class="form-group">
+                        <label for="experience">Досвід:</label>
+                        <input id="experience" type="number" name="experience" value="{{ request.GET.experience }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="experience-filter">Фільтр досвіду:</label>
+                        <select id="experience-filter" name="experience_filter">
+                            <option value="">--</option>
+                            <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
+                            <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
+                            <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
+                            <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
+                            <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-pair">
+                    <div class="form-group">
+                        <label for="rating">Рейтинг:</label>
+                        <input id="rating" type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="rating-filter">Фільтр рейтингу:</label>
+                        <select id="rating-filter" name="rating_filter">
+                            <option value="">--</option>
+                            <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
+                            <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
+                            <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
+                            <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
+                            <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Досвід:</label>
-                    <input type="number" name="experience" value="{{ request.GET.experience }}">
-                </div>
-
-                <div class="form-group">
-                    <label>Фільтр досвіду:</label>
-                    <select name="experience_filter">
-                        <option value="">--</option>
-                        <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
-                        <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
-                        <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
-                        <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
-                        <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Рейтинг:</label>
-                    <input type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
-                </div>
-
-                <div class="form-group">
-                    <label>Фільтр рейтингу:</label>
-                    <select name="rating_filter">
-                        <option value="">--</option>
-                        <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
-                        <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
-                        <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
-                        <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
-                        <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
+                    <label for="sort-by">Сортування:</label>
+                    <select id="sort-by" name="sort_by">
+                        <option value="">За замовчуванням</option>
+                        <option value="experience_asc" {% if request.GET.sort_by == "experience_asc" %}selected{% endif %}>Досвід: за зростанням</option>
+                        <option value="experience_desc" {% if request.GET.sort_by == "experience_desc" %}selected{% endif %}>Досвід: за спаданням</option>
+                        <option value="rating_asc" {% if request.GET.sort_by == "rating_asc" %}selected{% endif %}>Рейтинг: за зростанням</option>
+                        <option value="rating_desc" {% if request.GET.sort_by == "rating_desc" %}selected{% endif %}>Рейтинг: за спаданням</option>
                     </select>
                 </div>
 

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
+from django.db.models import Avg, Count, F, Q
 from freelancer.models import Freelancer, FreelancerStatus, FreelancerSkill, Portfolio
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
@@ -236,11 +237,15 @@ def freelancer_list(request):
 
     name = request.GET.get('name')
     status_id = request.GET.get('status')
-    skill_id = request.GET.get('skill')
+    skill_ids = list(dict.fromkeys(request.GET.getlist('skill')))
+    skill_mode = request.GET.get('skill_mode', 'any').lower()
+    if skill_mode not in {'any', 'all'}:
+        skill_mode = 'any'
     experience = request.GET.get('experience')
     experience_filter = request.GET.get('experience_filter')
     rating = request.GET.get('rating')
     rating_filter = request.GET.get('rating_filter')
+    sort_by = request.GET.get('sort_by')
 
     if name:
         freelancers = freelancers.filter(
@@ -251,12 +256,18 @@ def freelancer_list(request):
     if status_id:
         freelancers = freelancers.filter(id_status_id=status_id)
 
-    if skill_id:
-        freelancers = freelancers.filter(
-            id__in=FreelancerSkill.objects.filter(
-                id_skill_id=skill_id
-            ).values_list('id_freelancer', flat=True)
-        )
+    if skill_ids:
+        matching_skills = FreelancerSkill.objects.filter(id_skill_id__in=skill_ids)
+        if skill_mode == 'all':
+            matching_skills = (
+                matching_skills.values('id_freelancer')
+                .annotate(skill_count=Count('id_skill', distinct=True))
+                .filter(skill_count=len(skill_ids))
+                .values_list('id_freelancer', flat=True)
+            )
+        else:
+            matching_skills = matching_skills.values_list('id_freelancer', flat=True)
+        freelancers = freelancers.filter(id__in=matching_skills)
 
     if experience and experience_filter:
         try:
@@ -275,33 +286,51 @@ def freelancer_list(request):
         except ValueError:
             pass
 
-    rating = request.GET.get('rating')
-    rating_filter = request.GET.get('rating_filter')
-
-    if rating and rating_filter:
+    rating_filters = {
+        'lt': 'average_rating__lt',
+        'lte': 'average_rating__lte',
+        'eq': 'average_rating',
+        'gte': 'average_rating__gte',
+        'gt': 'average_rating__gt',
+    }
+    rating_sort_orders = {
+        'rating_asc': F('average_rating').asc(nulls_last=True),
+        'rating_desc': F('average_rating').desc(nulls_last=True),
+    }
+    experience_sort_orders = {
+        'experience_asc': 'experience',
+        'experience_desc': '-experience',
+    }
+    rating_value = None
+    if rating and rating_filter in rating_filters:
         try:
             rating = float(rating)
-            ops = {
-                'lt': lambda r: r < rating,
-                'lte': lambda r: r <= rating,
-                'eq': lambda r: r == rating,
-                'gte': lambda r: r >= rating,
-                'gt': lambda r: r > rating,
-            }
-
-            if rating_filter in ops:
-                freelancers = [
-                    f for f in freelancers
-                    if (raw := get_average_rating_for_user(f.id_user.id)) is not None
-                       and ops[rating_filter](raw)
-                ]
+            rating_value = rating
         except ValueError:
-            pass
+            rating_value = None
+
+    sort_order = experience_sort_orders.get(sort_by)
+    if sort_by in rating_sort_orders:
+        sort_order = rating_sort_orders[sort_by]
+    if rating_value is not None or sort_by in rating_sort_orders:
+        freelancers = freelancers.annotate(
+            average_rating=Avg('id_user__rating__rating')
+        )
+
+    if rating_value is not None:
+        freelancers = freelancers.filter(**{
+            rating_filters[rating_filter]: rating_value
+        })
+
+    if sort_order is not None:
+        freelancers = freelancers.order_by(sort_order)
 
     context = {
         'freelancers': freelancers,
         'statuses': statuses,
         'skills': skills,
+        'selected_skill_ids': skill_ids,
+        'skill_mode': skill_mode,
         'request': request,
     }
 

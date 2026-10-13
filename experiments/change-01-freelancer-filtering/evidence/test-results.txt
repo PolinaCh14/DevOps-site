@@ -1,0 +1,31 @@
+Focused commands:
+Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+
+Original CHANGE-001 focused run after backend implementation:
+- 14 tests executed.
+- First run: 13 passed and 1 test assertion failed because Django's HTML-fragment comparison mode did not match the rendered select.
+- Rerun after correcting the assertion: all 14 tests passed; system check reported no issues.
+
+Frontend follow-up:
+- First run: 15 tests found. Two assertion issues were exposed: checking for a client-rendered remove-button aria-label in the server response, and looking for select tags without their newly added `id` attributes.
+- Second run: 15 tests found. The stable selector assertion was corrected; the selected-count check also counted JavaScript `.checked` references and was replaced with assertions against the selected skill inputs.
+- Final run: all 15 tests passed; Django system check reported no issues (0 silenced).
+- The round-trip test confirms that two selected skill ids are rendered as checked, all other form values are preserved, and `skill_mode=all` remains selected in both list pages.
+
+Final frontend run summary:
+- System check: no issues (0 silenced).
+- Ran 15 tests.
+- Result: OK.
+- Test database cleanup completed.
+
+Final diff whitespace validation:
+- Command: git diff --check
+- Result: passed.
+
+Checkbox-only skill selector correction:
+- Command: Set-Location D:\piton\practice\DevOps-site\devopssite; D:\piton\practice\DevOps-site\venv\Scripts\python.exe manage.py test freelancer.tests --verbosity 2
+- Django system check: no issues (0 silenced).
+- Ran 15 tests.
+- Result: OK.
+- Tests verify no details/dropdown element, no duplicate selected-chip container or remove-button markup, checkbox selections are restored, count is rendered, and matching mode is preserved.
+- `git diff --check`: passed.

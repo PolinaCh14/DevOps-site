@@ -1,0 +1,951 @@
+diff --git a/devopssite/adminpannel/views.py b/devopssite/adminpannel/views.py
+index a6f0af1..c29473d 100644
+--- a/devopssite/adminpannel/views.py
++++ b/devopssite/adminpannel/views.py
+@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
+ from django.contrib.auth.decorators import login_required
+ from django.contrib import messages
+ from django.shortcuts import get_object_or_404
++from django.db.models import Avg, Count, F, Q
+ from freelancer.models import Freelancer, FreelancerStatus, FreelancerSkill, Portfolio
+ from django.views.decorators.http import require_http_methods
+ from django.http import JsonResponse
+@@ -236,11 +237,15 @@ def freelancer_list(request):
+ 
+     name = request.GET.get('name')
+     status_id = request.GET.get('status')
+-    skill_id = request.GET.get('skill')
++    skill_ids = list(dict.fromkeys(request.GET.getlist('skill')))
++    skill_mode = request.GET.get('skill_mode', 'any').lower()
++    if skill_mode not in {'any', 'all'}:
++        skill_mode = 'any'
+     experience = request.GET.get('experience')
+     experience_filter = request.GET.get('experience_filter')
+     rating = request.GET.get('rating')
+     rating_filter = request.GET.get('rating_filter')
++    sort_by = request.GET.get('sort_by')
+ 
+     if name:
+         freelancers = freelancers.filter(
+@@ -251,12 +256,18 @@ def freelancer_list(request):
+     if status_id:
+         freelancers = freelancers.filter(id_status_id=status_id)
+ 
+-    if skill_id:
+-        freelancers = freelancers.filter(
+-            id__in=FreelancerSkill.objects.filter(
+-                id_skill_id=skill_id
+-            ).values_list('id_freelancer', flat=True)
+-        )
++    if skill_ids:
++        matching_skills = FreelancerSkill.objects.filter(id_skill_id__in=skill_ids)
++        if skill_mode == 'all':
++            matching_skills = (
++                matching_skills.values('id_freelancer')
++                .annotate(skill_count=Count('id_skill', distinct=True))
++                .filter(skill_count=len(skill_ids))
++                .values_list('id_freelancer', flat=True)
++            )
++        else:
++            matching_skills = matching_skills.values_list('id_freelancer', flat=True)
++        freelancers = freelancers.filter(id__in=matching_skills)
+ 
+     if experience and experience_filter:
+         try:
+@@ -275,33 +286,51 @@ def freelancer_list(request):
+         except ValueError:
+             pass
+ 
+-    rating = request.GET.get('rating')
+-    rating_filter = request.GET.get('rating_filter')
+-
+-    if rating and rating_filter:
++    rating_filters = {
++        'lt': 'average_rating__lt',
++        'lte': 'average_rating__lte',
++        'eq': 'average_rating',
++        'gte': 'average_rating__gte',
++        'gt': 'average_rating__gt',
++    }
++    rating_sort_orders = {
++        'rating_asc': F('average_rating').asc(nulls_last=True),
++        'rating_desc': F('average_rating').desc(nulls_last=True),
++    }
++    experience_sort_orders = {
++        'experience_asc': 'experience',
++        'experience_desc': '-experience',
++    }
++    rating_value = None
++    if rating and rating_filter in rating_filters:
+         try:
+             rating = float(rating)
+-            ops = {
+-                'lt': lambda r: r < rating,
+-                'lte': lambda r: r <= rating,
+-                'eq': lambda r: r == rating,
+-                'gte': lambda r: r >= rating,
+-                'gt': lambda r: r > rating,
+-            }
+-
+-            if rating_filter in ops:
+-                freelancers = [
+-                    f for f in freelancers
+-                    if (raw := get_average_rating_for_user(f.id_user.id)) is not None
+-                       and ops[rating_filter](raw)
+-                ]
++            rating_value = rating
+         except ValueError:
+-            pass
++            rating_value = None
++
++    sort_order = experience_sort_orders.get(sort_by)
++    if sort_by in rating_sort_orders:
++        sort_order = rating_sort_orders[sort_by]
++    if rating_value is not None or sort_by in rating_sort_orders:
++        freelancers = freelancers.annotate(
++            average_rating=Avg('id_user__rating__rating')
++        )
++
++    if rating_value is not None:
++        freelancers = freelancers.filter(**{
++            rating_filters[rating_filter]: rating_value
++        })
++
++    if sort_order is not None:
++        freelancers = freelancers.order_by(sort_order)
+ 
+     context = {
+         'freelancers': freelancers,
+         'statuses': statuses,
+         'skills': skills,
++        'selected_skill_ids': skill_ids,
++        'skill_mode': skill_mode,
+         'request': request,
+     }
+ 
+diff --git a/devopssite/freelancer/tests.py b/devopssite/freelancer/tests.py
+index 4fd2286..e3fdd78 100644
+--- a/devopssite/freelancer/tests.py
++++ b/devopssite/freelancer/tests.py
+@@ -3,6 +3,8 @@ from django.urls import reverse
+ from users.models import User, Role
+ from .models import Freelancer, Portfolio, FreelancerStatus, FreelancerSkill
+ from skill.models import Skill
++from project.models import Project, Status as ProjectStatus
++from rating.models import Rating
+ 
+ 
+ class FreelancerViewTests(TestCase):
+@@ -55,6 +57,264 @@ class FreelancerViewTests(TestCase):
+         self.assertContains(response, 'My CV')
+ 
+ 
++class FreelancerFilteringTests(TestCase):
++    list_urls = ('freelancers:freelancer_list', 'adminp:freelancer_list_a')
++
++    def setUp(self):
++        self.client = Client()
++        role = Role.objects.create(role='freelancer')
++        self.status_active = FreelancerStatus.objects.create(status='active')
++        self.status_inactive = FreelancerStatus.objects.create(status='inactive')
++
++        self.alpha = self.create_freelancer(
++            'alpha@example.com', 'Alpha', 'One', '1000000001', 2, self.status_active
++        )
++        self.bravo = self.create_freelancer(
++            'bravo@example.com', 'Bravo', 'Two', '1000000002', 5, self.status_active
++        )
++        self.charlie = self.create_freelancer(
++            'charlie@example.com', 'Charlie', 'Three', '1000000003', 1, self.status_inactive
++        )
++        self.delta = self.create_freelancer(
++            'delta@example.com', 'Delta', 'Four', '1000000004', 4, self.status_inactive
++        )
++
++        self.aws = Skill.objects.create(skill='AWS')
++        self.docker = Skill.objects.create(skill='Docker')
++        self.python = Skill.objects.create(skill='Python')
++        self.add_skills(self.alpha, self.aws, self.python)
++        self.add_skills(self.bravo, self.docker)
++        self.add_skills(self.charlie, self.aws, self.docker)
++        self.add_skills(self.delta, self.python)
++
++        project_status = ProjectStatus.objects.create(status='active')
++        self.project = Project.objects.create(
++            user=self.alpha.id_user,
++            status=project_status,
++            name='Rating project',
++            description='Project used for freelancer rating tests',
++        )
++        self.add_rating(self.alpha, '4.00')
++        self.add_rating(self.alpha, '3.00')
++        self.add_rating(self.bravo, '5.00')
++        self.add_rating(self.delta, '2.50')
++
++    def create_freelancer(self, email, name, surname, phone, experience, status):
++        user = User.objects.create_user(
++            email=email,
++            password='test123',
++            role=Role.objects.get(role='freelancer'),
++            name=name,
++            surname=surname,
++            phone=phone,
++        )
++        return Freelancer.objects.create(
++            id_user=user,
++            id_status=status,
++            experience=experience,
++        )
++
++    @staticmethod
++    def add_skills(freelancer, *skills):
++        FreelancerSkill.objects.bulk_create([
++            FreelancerSkill(id_freelancer=freelancer, id_skill=skill)
++            for skill in skills
++        ])
++
++    def add_rating(self, freelancer, value):
++        Rating.objects.create(
++            id_evaluates=freelancer.id_user,
++            id_appraiser=self.alpha.id_user,
++            id_project=self.project,
++            rating=value,
++        )
++
++    def freelancer_names(self, response):
++        return [
++            freelancer.id_user.name
++            for freelancer in response.context['freelancers']
++        ]
++
++    def request_lists(self, params=None):
++        return [
++            self.client.get(reverse(url_name), params or {})
++            for url_name in self.list_urls
++        ]
++
++    def test_skill_controls_use_checkboxes_and_ukrainian_mode_labels_on_both_pages(self):
++        for response in self.request_lists():
++            self.assertContains(response, 'type="checkbox"', html=False)
++            self.assertContains(response, 'name="skill"', html=False)
++            self.assertContains(response, 'class="skill-picker-options"', html=False)
++            self.assertContains(response, 'Обрано: 0', html=False)
++            self.assertContains(response, 'Будь-яка з вибраних', html=False)
++            self.assertContains(response, 'Усі вибрані', html=False)
++            self.assertContains(response, 'name="skill_mode"', html=False)
++            self.assertContains(response, 'name="sort_by"', html=False)
++            self.assertNotContains(response, '<details', html=False)
++            self.assertNotContains(response, 'data-selected-skills', html=False)
++            self.assertNotContains(response, 'skill-chip-remove', html=False)
++            self.assertNotContains(response, 'Видалити навичку', html=False)
++            self.assertNotContains(response, 'ANY')
++            self.assertNotContains(response, 'ALL')
++            self.assertEqual(response.context['skill_mode'], 'any')
++
++    def test_selected_filters_are_preserved_in_both_forms(self):
++        params = {
++            'name': 'Alpha',
++            'status': self.status_active.id,
++            'skill': [self.aws.id, self.docker.id],
++            'skill_mode': 'all',
++            'experience': '3',
++            'experience_filter': 'gte',
++            'rating': '4.0',
++            'rating_filter': 'gte',
++            'sort_by': 'rating_desc',
++        }
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name):
++                response = self.client.get(reverse(url_name), params)
++                self.assertEqual(response.context['selected_skill_ids'], [
++                    str(self.aws.id), str(self.docker.id)
++                ])
++                self.assertEqual(response.context['skill_mode'], 'all')
++                self.assertContains(response, 'value="Alpha"', html=False)
++                self.assertContains(response, f'value="{self.aws.id}"', html=False)
++                self.assertContains(response, f'value="{self.docker.id}"', html=False)
++                rendered_form = response.content.decode()
++                self.assertRegex(
++                    rendered_form,
++                    rf'id="freelancer-skill-{self.aws.id}"\s+type="checkbox"\s+name="skill"\s+value="{self.aws.id}"\s+checked'
++                )
++                self.assertRegex(
++                    rendered_form,
++                    rf'id="freelancer-skill-{self.docker.id}"\s+type="checkbox"\s+name="skill"\s+value="{self.docker.id}"\s+checked'
++                )
++                self.assertContains(response, 'Обрано: 2', html=False)
++                self.assertContains(response, 'value="all" selected', html=False)
++                self.assertContains(response, 'name="experience" value="3"', html=False)
++                self.assertContains(response, 'value="gte" selected', html=False)
++                self.assertContains(response, 'name="rating" value="4.0"', html=False)
++                self.assertContains(response, 'value="rating_desc" selected', html=False)
++                self.assertContains(response, f'id="freelancer-skill-{self.aws.id}"', html=False)
++                self.assertContains(response, f'id="freelancer-skill-{self.docker.id}"', html=False)
++
++    def test_any_and_all_skill_matching_on_both_pages(self):
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name, mode='any'):
++                response = self.client.get(reverse(url_name), {
++                    'skill': [self.aws.id, self.docker.id],
++                    'skill_mode': 'any',
++                })
++                self.assertCountEqual(
++                    self.freelancer_names(response), ['Alpha', 'Bravo', 'Charlie']
++                )
++
++            with self.subTest(url_name=url_name, mode='all'):
++                response = self.client.get(reverse(url_name), {
++                    'skill': [self.aws.id, self.docker.id],
++                    'skill_mode': 'all',
++                })
++                self.assertEqual(self.freelancer_names(response), ['Charlie'])
++
++    def test_multi_skill_filter_combines_with_status_and_experience(self):
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name, filter='status'):
++                response = self.client.get(reverse(url_name), {
++                    'skill': [self.aws.id, self.docker.id],
++                    'status': self.status_active.id,
++                })
++                self.assertCountEqual(self.freelancer_names(response), ['Alpha', 'Bravo'])
++
++            with self.subTest(url_name=url_name, filter='experience'):
++                response = self.client.get(reverse(url_name), {
++                    'skill': [self.aws.id, self.docker.id],
++                    'experience': 3,
++                    'experience_filter': 'gte',
++                })
++                self.assertEqual(self.freelancer_names(response), ['Bravo'])
++
++    def test_multi_skill_filter_combines_with_rating_filter_in_one_rating_query(self):
++        from django.db import connection
++        from django.test.utils import CaptureQueriesContext
++
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name):
++                with CaptureQueriesContext(connection) as queries:
++                    response = self.client.get(reverse(url_name), {
++                        'skill': [self.aws.id, self.docker.id],
++                        'rating': '3.5',
++                        'rating_filter': 'gte',
++                    })
++                self.assertCountEqual(self.freelancer_names(response), ['Alpha', 'Bravo'])
++                rating_queries = [
++                    query for query in queries.captured_queries
++                    if '"rating"' in query['sql'].lower()
++                ]
++                self.assertEqual(len(rating_queries), 1)
++
++    def test_experience_sorting_ascending_and_descending_on_both_pages(self):
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name, direction='ascending'):
++                response = self.client.get(reverse(url_name), {
++                    'sort_by': 'experience_asc',
++                })
++                self.assertEqual(
++                    self.freelancer_names(response), ['Charlie', 'Alpha', 'Delta', 'Bravo']
++                )
++
++            with self.subTest(url_name=url_name, direction='descending'):
++                response = self.client.get(reverse(url_name), {
++                    'sort_by': 'experience_desc',
++                })
++                self.assertEqual(
++                    self.freelancer_names(response), ['Bravo', 'Delta', 'Alpha', 'Charlie']
++                )
++
++    def test_rating_sorting_keeps_unrated_freelancers_last_in_both_directions(self):
++        from django.db import connection
++        from django.test.utils import CaptureQueriesContext
++
++        for url_name in self.list_urls:
++            for direction, expected in (
++                ('rating_asc', ['Delta', 'Alpha', 'Bravo', 'Charlie']),
++                ('rating_desc', ['Bravo', 'Alpha', 'Delta', 'Charlie']),
++            ):
++                with self.subTest(url_name=url_name, direction=direction):
++                    with CaptureQueriesContext(connection) as queries:
++                        response = self.client.get(reverse(url_name), {
++                            'sort_by': direction,
++                        })
++                    self.assertEqual(self.freelancer_names(response), expected)
++                    rating_queries = [
++                        query for query in queries.captured_queries
++                        if '"rating"' in query['sql'].lower()
++                    ]
++                    self.assertEqual(len(rating_queries), 1)
++
++    def test_existing_single_value_filters_and_unsorted_default_are_preserved(self):
++        for url_name in self.list_urls:
++            with self.subTest(url_name=url_name, case='legacy filters'):
++                response = self.client.get(reverse(url_name), {
++                    'name': 'Alpha',
++                    'status': self.status_active.id,
++                    'skill': self.aws.id,
++                    'experience': 2,
++                    'experience_filter': 'eq',
++                    'rating': '3.5',
++                    'rating_filter': 'gte',
++                })
++                self.assertEqual(self.freelancer_names(response), ['Alpha'])
++
++            with self.subTest(url_name=url_name, case='default ordering'):
++                response = self.client.get(reverse(url_name))
++                freelancers = response.context['freelancers']
++                self.assertFalse(freelancers.query.order_by)
++                self.assertCountEqual(
++                    self.freelancer_names(response), ['Alpha', 'Bravo', 'Charlie', 'Delta']
++                )
++
++
+ class PortfolioViewTests(TestCase):
+     def setUp(self):
+         self.client = Client()
+diff --git a/devopssite/freelancer/views.py b/devopssite/freelancer/views.py
+index 25d4134..38fe351 100644
+--- a/devopssite/freelancer/views.py
++++ b/devopssite/freelancer/views.py
+@@ -4,7 +4,7 @@ from .models import Freelancer, FreelancerStatus, FreelancerSkill, Portfolio
+ from skill.models import Skill
+ from users.models import User
+ from django.contrib.auth.decorators import login_required
+-from django.db.models import Q
++from django.db.models import Avg, Count, F, Q
+ from rating.utils import get_average_rating_for_user
+ from django.http import JsonResponse
+ from .utils import analyze_resume
+@@ -94,11 +94,15 @@ def freelancer_list(request):
+ 
+     name = request.GET.get('name')
+     status_id = request.GET.get('status')
+-    skill_id = request.GET.get('skill')
++    skill_ids = list(dict.fromkeys(request.GET.getlist('skill')))
++    skill_mode = request.GET.get('skill_mode', 'any').lower()
++    if skill_mode not in {'any', 'all'}:
++        skill_mode = 'any'
+     experience = request.GET.get('experience')
+     experience_filter = request.GET.get('experience_filter')
+     rating = request.GET.get('rating')
+     rating_filter = request.GET.get('rating_filter')
++    sort_by = request.GET.get('sort_by')
+ 
+     if name:
+         freelancers = freelancers.filter(
+@@ -109,12 +113,18 @@ def freelancer_list(request):
+     if status_id:
+         freelancers = freelancers.filter(id_status_id=status_id)
+ 
+-    if skill_id:
+-        freelancers = freelancers.filter(
+-            id__in=FreelancerSkill.objects.filter(
+-                id_skill_id=skill_id
+-            ).values_list('id_freelancer', flat=True)
+-        )
++    if skill_ids:
++        matching_skills = FreelancerSkill.objects.filter(id_skill_id__in=skill_ids)
++        if skill_mode == 'all':
++            matching_skills = (
++                matching_skills.values('id_freelancer')
++                .annotate(skill_count=Count('id_skill', distinct=True))
++                .filter(skill_count=len(skill_ids))
++                .values_list('id_freelancer', flat=True)
++            )
++        else:
++            matching_skills = matching_skills.values_list('id_freelancer', flat=True)
++        freelancers = freelancers.filter(id__in=matching_skills)
+ 
+     if experience and experience_filter:
+         try:
+@@ -133,33 +143,50 @@ def freelancer_list(request):
+         except ValueError:
+             pass
+ 
+-    rating = request.GET.get('rating')
+-    rating_filter = request.GET.get('rating_filter')
+-
+-    if rating and rating_filter:
++    rating_filters = {
++        'lt': 'average_rating__lt',
++        'lte': 'average_rating__lte',
++        'eq': 'average_rating',
++        'gte': 'average_rating__gte',
++        'gt': 'average_rating__gt',
++    }
++    rating_sort_orders = {
++        'rating_asc': F('average_rating').asc(nulls_last=True),
++        'rating_desc': F('average_rating').desc(nulls_last=True),
++    }
++    experience_sort_orders = {
++        'experience_asc': 'experience',
++        'experience_desc': '-experience',
++    }
++    rating_value = None
++    if rating and rating_filter in rating_filters:
+         try:
+-            rating = float(rating)
+-            ops = {
+-                'lt': lambda r: r < rating,
+-                'lte': lambda r: r <= rating,
+-                'eq': lambda r: r == rating,
+-                'gte': lambda r: r >= rating,
+-                'gt': lambda r: r > rating,
+-            }
+-
+-            if rating_filter in ops:
+-                freelancers = [
+-                    f for f in freelancers
+-                    if (raw := get_average_rating_for_user(f.id_user.id)) is not None
+-                       and ops[rating_filter](raw)
+-                ]
++            rating_value = float(rating)
+         except ValueError:
+-            pass
++            rating_value = None
++
++    sort_order = experience_sort_orders.get(sort_by)
++    if sort_by in rating_sort_orders:
++        sort_order = rating_sort_orders[sort_by]
++    if rating_value is not None or sort_by in rating_sort_orders:
++        freelancers = freelancers.annotate(
++            average_rating=Avg('id_user__rating__rating')
++        )
++
++    if rating_value is not None:
++        freelancers = freelancers.filter(**{
++            rating_filters[rating_filter]: rating_value
++        })
++
++    if sort_order is not None:
++        freelancers = freelancers.order_by(sort_order)
+ 
+     context = {
+         'freelancers': freelancers,
+         'statuses': statuses,
+         'skills': skills,
++        'selected_skill_ids': skill_ids,
++        'skill_mode': skill_mode,
+         'request': request,
+     }
+ 
+@@ -376,4 +403,3 @@ def analyze_resume_view(request):
+ 
+ 
+ 
+-
+diff --git a/devopssite/static/css/freelancers.css b/devopssite/static/css/freelancers.css
+index e029559..21e5da9 100644
+--- a/devopssite/static/css/freelancers.css
++++ b/devopssite/static/css/freelancers.css
+@@ -123,6 +123,113 @@ select {
+     margin-top: 30px;
+ }
+ 
++.freelancer-filter-form {
++    flex-basis: 320px;
++    padding: 22px;
++    border: 1px solid rgba(51, 92, 46, 0.12);
++}
++
++.freelancer-filter-form h3 {
++    margin-bottom: 18px;
++    color: var(--primary-color);
++}
++
++.freelancer-filter-form .form-group {
++    min-width: 0;
++    margin-bottom: 14px;
++}
++
++.freelancer-filter-form .form-group > label {
++    margin-bottom: 6px;
++    color: #294526;
++    font-size: 0.9rem;
++}
++
++.freelancer-filter-form input[type="text"],
++.freelancer-filter-form input[type="number"],
++.freelancer-filter-form select,
++.skill-picker > summary {
++    width: 100%;
++    min-height: 42px;
++    padding: 9px 11px;
++    border: 1px solid #cbd7c8;
++    border-radius: 8px;
++    background: #fff;
++    color: #263626;
++    font: inherit;
++}
++
++.freelancer-filter-form input:focus,
++.freelancer-filter-form select:focus,
++.skill-picker > summary:focus-visible {
++    outline: 2px solid rgba(76, 132, 67, 0.28);
++    outline-offset: 1px;
++    border-color: var(--secondary-color);
++}
++
++.freelancer-filter-form .filter-group-box {
++    margin: 2px 0 14px;
++    padding: 13px 12px 1px;
++    border: 1px solid #e0e9dd;
++    border-radius: 10px;
++    background: #f7faf6;
++}
++
++.freelancer-filter-form .filter-pair {
++    display: grid;
++    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
++    gap: 10px;
++}
++
++.skill-picker-count {
++    margin: 0 0 6px;
++    color: #60765c;
++    font-size: 0.78rem;
++}
++
++.skill-picker-options {
++    max-height: 220px;
++    overflow-y: auto;
++    padding: 5px 7px;
++    border: 1px solid #cbd7c8;
++    border-radius: 8px;
++    background: #fff;
++}
++
++.skill-picker-option {
++    display: flex;
++    align-items: center;
++    gap: 8px;
++    padding: 5px 3px;
++    border-radius: 6px;
++    color: #263626;
++    cursor: pointer;
++    font-weight: 400;
++}
++
++.skill-picker-option:hover {
++    background: #f0f6ee;
++}
++
++.skill-picker-option input {
++    flex: 0 0 16px;
++    width: 16px;
++    height: 16px;
++    margin: 0;
++    accent-color: var(--secondary-color);
++}
++
++.skill-picker-empty {
++    padding: 8px;
++    color: #687768;
++    font-size: 0.88rem;
++}
++
++.freelancer-filter-form .btn {
++    min-height: 42px;
++    margin-top: 2px;
++}
++
+ @media (max-width: 768px) {
+     .content-layout {
+         flex-direction: column;
+@@ -137,4 +244,9 @@ select {
+     .btn {
+         width: auto;
+     }
++
++    .freelancer-filter-form {
++        flex-basis: auto;
++        width: 100%;
++    }
+ }
+\ No newline at end of file
+diff --git a/devopssite/templates/freelancer_list.html b/devopssite/templates/freelancer_list.html
+index 0fcb5b3..60f879d 100644
+--- a/devopssite/templates/freelancer_list.html
++++ b/devopssite/templates/freelancer_list.html
+@@ -6,17 +6,17 @@
+         <h1 class="page-title">Пошук фрілансерів</h1>
+ 
+         <div class="content-layout">
+-            <form method="get" class="filter-form sidebar">
++            <form method="get" class="filter-form sidebar freelancer-filter-form">
+                 <h3>Фільтри</h3>
+ 
+                 <div class="form-group">
+-                    <label>Ім'я або прізвище:</label>
+-                    <input type="text" name="name" value="{{ request.GET.name }}">
++                    <label for="freelancer-name">Ім'я або прізвище:</label>
++                    <input id="freelancer-name" type="text" name="name" value="{{ request.GET.name }}">
+                 </div>
+ 
+                 <div class="form-group">
+-                    <label>Статус:</label>
+-                    <select name="status">
++                    <label for="freelancer-status">Статус:</label>
++                    <select id="freelancer-status" name="status">
+                         <option value="">Усі</option>
+                         {% for status in statuses %}
+                             <option value="{{ status.id }}" {% if request.GET.status == status.id|stringformat:"s" %}selected{% endif %}>
+@@ -26,49 +26,81 @@
+                     </select>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Навичка:</label>
+-                    <select name="skill">
+-                        <option value="">Усі</option>
+-                        {% for skill in skills %}
+-                            <option value="{{ skill.id }}" {% if request.GET.skill == skill.id|stringformat:"s" %}selected{% endif %}>
+-                                {{ skill.skill }}
+-                            </option>
+-                        {% endfor %}
+-                    </select>
+-                </div>
++                <div class="filter-group-box">
++                    <div class="form-group">
++                        <label>Навички:</label>
++                        <p class="skill-picker-count">Обрано: {{ selected_skill_ids|length }}</p>
++                        <div class="skill-picker-options">
++                            {% for skill in skills %}
++                                <label class="skill-picker-option" for="freelancer-skill-{{ skill.id }}">
++                                    <input
++                                        id="freelancer-skill-{{ skill.id }}"
++                                        type="checkbox"
++                                        name="skill"
++                                        value="{{ skill.id }}"
++                                        {% if skill.id|stringformat:"s" in selected_skill_ids %}checked{% endif %}
++                                    >
++                                    <span>{{ skill.skill }}</span>
++                                </label>
++                            {% empty %}
++                                <p class="skill-picker-empty">Навичок поки немає.</p>
++                            {% endfor %}
++                        </div>
++                    </div>
+ 
+-                <div class="form-group">
+-                    <label>Досвід:</label>
+-                    <input type="number" name="experience" value="{{ request.GET.experience }}">
++                    <div class="form-group">
++                        <label for="skill-mode">Збіг навичок:</label>
++                        <select id="skill-mode" name="skill_mode">
++                            <option value="any" {% if skill_mode == "any" %}selected{% endif %}>Будь-яка з вибраних</option>
++                            <option value="all" {% if skill_mode == "all" %}selected{% endif %}>Усі вибрані</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Фільтр досвіду:</label>
+-                    <select name="experience_filter">
+-                        <option value="">--</option>
+-                        <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
+-                        <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
+-                        <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
+-                        <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
+-                        <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
+-                    </select>
++                <div class="filter-pair">
++                    <div class="form-group">
++                        <label for="experience">Досвід:</label>
++                        <input id="experience" type="number" name="experience" value="{{ request.GET.experience }}">
++                    </div>
++                    <div class="form-group">
++                        <label for="experience-filter">Фільтр досвіду:</label>
++                        <select id="experience-filter" name="experience_filter">
++                            <option value="">--</option>
++                            <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
++                            <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
++                            <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
++                            <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
++                            <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Рейтинг:</label>
+-                    <input type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
++                <div class="filter-pair">
++                    <div class="form-group">
++                        <label for="rating">Рейтинг:</label>
++                        <input id="rating" type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
++                    </div>
++                    <div class="form-group">
++                        <label for="rating-filter">Фільтр рейтингу:</label>
++                        <select id="rating-filter" name="rating_filter">
++                            <option value="">--</option>
++                            <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
++                            <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
++                            <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
++                            <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
++                            <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+                 <div class="form-group">
+-                    <label>Фільтр рейтингу:</label>
+-                    <select name="rating_filter">
+-                        <option value="">--</option>
+-                        <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
+-                        <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
+-                        <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
+-                        <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
+-                        <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
++                    <label for="sort-by">Сортування:</label>
++                    <select id="sort-by" name="sort_by">
++                        <option value="">За замовчуванням</option>
++                        <option value="experience_asc" {% if request.GET.sort_by == "experience_asc" %}selected{% endif %}>Досвід: за зростанням</option>
++                        <option value="experience_desc" {% if request.GET.sort_by == "experience_desc" %}selected{% endif %}>Досвід: за спаданням</option>
++                        <option value="rating_asc" {% if request.GET.sort_by == "rating_asc" %}selected{% endif %}>Рейтинг: за зростанням</option>
++                        <option value="rating_desc" {% if request.GET.sort_by == "rating_desc" %}selected{% endif %}>Рейтинг: за спаданням</option>
+                     </select>
+                 </div>
+ 
+diff --git a/devopssite/templates/freelancer_list_a.html b/devopssite/templates/freelancer_list_a.html
+index 248f960..562ec4d 100644
+--- a/devopssite/templates/freelancer_list_a.html
++++ b/devopssite/templates/freelancer_list_a.html
+@@ -7,17 +7,17 @@
+         <h1 class="page-title">Усі фрілансери</h1>
+ 
+         <div class="content-layout">
+-            <form method="get" class="filter-form sidebar">
++            <form method="get" class="filter-form sidebar freelancer-filter-form">
+                 <h3>Фільтри</h3>
+ 
+                 <div class="form-group">
+-                    <label>Ім'я або прізвище:</label>
+-                    <input type="text" name="name" value="{{ request.GET.name }}">
++                    <label for="freelancer-name">Ім'я або прізвище:</label>
++                    <input id="freelancer-name" type="text" name="name" value="{{ request.GET.name }}">
+                 </div>
+ 
+                 <div class="form-group">
+-                    <label>Статус:</label>
+-                    <select name="status">
++                    <label for="freelancer-status">Статус:</label>
++                    <select id="freelancer-status" name="status">
+                         <option value="">Усі</option>
+                         {% for status in statuses %}
+                             <option value="{{ status.id }}" {% if request.GET.status == status.id|stringformat:"s" %}selected{% endif %}>
+@@ -27,49 +27,81 @@
+                     </select>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Навичка:</label>
+-                    <select name="skill">
+-                        <option value="">Усі</option>
+-                        {% for skill in skills %}
+-                            <option value="{{ skill.id }}" {% if request.GET.skill == skill.id|stringformat:"s" %}selected{% endif %}>
+-                                {{ skill.skill }}
+-                            </option>
+-                        {% endfor %}
+-                    </select>
+-                </div>
++                <div class="filter-group-box">
++                    <div class="form-group">
++                        <label>Навички:</label>
++                        <p class="skill-picker-count">Обрано: {{ selected_skill_ids|length }}</p>
++                        <div class="skill-picker-options">
++                            {% for skill in skills %}
++                                <label class="skill-picker-option" for="freelancer-skill-{{ skill.id }}">
++                                    <input
++                                        id="freelancer-skill-{{ skill.id }}"
++                                        type="checkbox"
++                                        name="skill"
++                                        value="{{ skill.id }}"
++                                        {% if skill.id|stringformat:"s" in selected_skill_ids %}checked{% endif %}
++                                    >
++                                    <span>{{ skill.skill }}</span>
++                                </label>
++                            {% empty %}
++                                <p class="skill-picker-empty">Навичок поки немає.</p>
++                            {% endfor %}
++                        </div>
++                    </div>
+ 
+-                <div class="form-group">
+-                    <label>Досвід:</label>
+-                    <input type="number" name="experience" value="{{ request.GET.experience }}">
++                    <div class="form-group">
++                        <label for="skill-mode">Збіг навичок:</label>
++                        <select id="skill-mode" name="skill_mode">
++                            <option value="any" {% if skill_mode == "any" %}selected{% endif %}>Будь-яка з вибраних</option>
++                            <option value="all" {% if skill_mode == "all" %}selected{% endif %}>Усі вибрані</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Фільтр досвіду:</label>
+-                    <select name="experience_filter">
+-                        <option value="">--</option>
+-                        <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
+-                        <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
+-                        <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
+-                        <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
+-                        <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
+-                    </select>
++                <div class="filter-pair">
++                    <div class="form-group">
++                        <label for="experience">Досвід:</label>
++                        <input id="experience" type="number" name="experience" value="{{ request.GET.experience }}">
++                    </div>
++                    <div class="form-group">
++                        <label for="experience-filter">Фільтр досвіду:</label>
++                        <select id="experience-filter" name="experience_filter">
++                            <option value="">--</option>
++                            <option value="lt" {% if request.GET.experience_filter == "lt" %}selected{% endif %}>&lt;</option>
++                            <option value="lte" {% if request.GET.experience_filter == "lte" %}selected{% endif %}>&le;</option>
++                            <option value="eq" {% if request.GET.experience_filter == "eq" %}selected{% endif %}>=</option>
++                            <option value="gte" {% if request.GET.experience_filter == "gte" %}selected{% endif %}>&ge;</option>
++                            <option value="gt" {% if request.GET.experience_filter == "gt" %}selected{% endif %}>&gt;</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+-                <div class="form-group">
+-                    <label>Рейтинг:</label>
+-                    <input type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
++                <div class="filter-pair">
++                    <div class="form-group">
++                        <label for="rating">Рейтинг:</label>
++                        <input id="rating" type="number" step="0.1" min="0" max="5" name="rating" value="{{ request.GET.rating }}">
++                    </div>
++                    <div class="form-group">
++                        <label for="rating-filter">Фільтр рейтингу:</label>
++                        <select id="rating-filter" name="rating_filter">
++                            <option value="">--</option>
++                            <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
++                            <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
++                            <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
++                            <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
++                            <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
++                        </select>
++                    </div>
+                 </div>
+ 
+                 <div class="form-group">
+-                    <label>Фільтр рейтингу:</label>
+-                    <select name="rating_filter">
+-                        <option value="">--</option>
+-                        <option value="lt" {% if request.GET.rating_filter == "lt" %}selected{% endif %}>&lt;</option>
+-                        <option value="lte" {% if request.GET.rating_filter == "lte" %}selected{% endif %}>&le;</option>
+-                        <option value="eq" {% if request.GET.rating_filter == "eq" %}selected{% endif %}>=</option>
+-                        <option value="gte" {% if request.GET.rating_filter == "gte" %}selected{% endif %}>&ge;</option>
+-                        <option value="gt" {% if request.GET.rating_filter == "gt" %}selected{% endif %}>&gt;</option>
++                    <label for="sort-by">Сортування:</label>
++                    <select id="sort-by" name="sort_by">
++                        <option value="">За замовчуванням</option>
++                        <option value="experience_asc" {% if request.GET.sort_by == "experience_asc" %}selected{% endif %}>Досвід: за зростанням</option>
++                        <option value="experience_desc" {% if request.GET.sort_by == "experience_desc" %}selected{% endif %}>Досвід: за спаданням</option>
++                        <option value="rating_asc" {% if request.GET.sort_by == "rating_asc" %}selected{% endif %}>Рейтинг: за зростанням</option>
++                        <option value="rating_desc" {% if request.GET.sort_by == "rating_desc" %}selected{% endif %}>Рейтинг: за спаданням</option>
+                     </select>
+                 </div>
+ 
