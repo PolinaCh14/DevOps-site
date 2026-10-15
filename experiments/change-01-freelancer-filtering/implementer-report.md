@@ -93,10 +93,6 @@ Recorded as HD-006 in decisions.md.
 None. The independent Reviewer stage has not been performed, and CHANGE-001 has not been marked accepted.
 
 ## Final Commit
-Not committed; no final implementation commit SHA is available.
-
-## Final Implementation Version
-
 Commit:
 22ab2b1d000aec87cba80fca097e6fd97ff085aa
 

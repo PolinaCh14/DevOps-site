@@ -86,17 +86,53 @@ The results can be ordered by average rating ascending or descending.
 When the new options are not selected, current search behavior remains intact.
 
 ## 6. Human-approved decisions recorded for this draft
-The following decisions were approved by the human reviewer and are recorded here for implementation planning without starting the implementation itself:
 
-- OQ-01: use an HTML multi-select for multiple skill selection.
+The following decisions were approved by the human reviewer for CHANGE-001.
+They define the approved implementation contract together with the amendments
+recorded below.
+
+- OQ-01: initial decision was to use an HTML multi-select for multiple skill selection.
+  This decision was later superseded by human-approved decision HD-006 during implementation UI review.
 - OQ-02: use an explicit ANY / ALL selector with a clear default value.
 - OQ-03: freelancers without ratings remain visible during rating sorting and are placed last in both ascending and descending rating order.
 - OQ-04: keep the existing freelancer list templates separate for this change; do not introduce template refactoring as part of CHANGE-001.
 - OQ-05: preserve the current default behavior when no explicit sort option is selected.
 
-These are human-approved requirements for the upcoming implementation but do not start the implementation work.
 
 Final decision status: Resolved / Human approved.
+
+
+## 6.1 Approved amendment: skill selection UI
+
+The initial OQ-01 decision specified an HTML multi-select control for selecting multiple freelancer skills.
+
+During implementation UI review, this decision was superseded by human-approved decision `HD-006` recorded in:
+
+`experiments/change-01-freelancer-filtering/decisions.md`
+
+The final approved UI contract for skill selection is:
+
+- use an always-expanded checkbox list for skill selection;
+- allow multiple skills to be selected simultaneously;
+- preserve selected checkbox state after form submission;
+- do not render selected-skill chips;
+- do not render separate remove buttons;
+- do not collapse the skill list into a dropdown.
+
+This amendment affects presentation only.
+
+The following functional behavior remains unchanged:
+
+- multiple skill selection;
+- ANY skill matching;
+- ALL skill matching;
+- compatibility with status, experience, and rating filters;
+- backend request handling;
+- acceptance criteria AC-01 through AC-09.
+
+This amendment supersedes the original OQ-01 UI decision.
+
+Amendment status: Approved by Human Reviewer.
 
 ## 7. Expected implementation boundary
 The implementation should remain local to the freelancer search/filtering flow and directly related templates and utilities.

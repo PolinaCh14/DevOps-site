@@ -18,7 +18,7 @@
 - `experiments/change-01-freelancer-filtering/evidence/commands.txt`
 - `experiments/change-01-freelancer-filtering/evidence/test-results.txt`
 - `experiments/change-01-freelancer-filtering/evidence/diff.patch`
-- `experiments/change-01-freelancer-filtering/decisions.md` was listed as implementation evidence but is absent from the tagged repository.
+- `experiments/change-01-freelancer-filtering/decisions.md`
 
 ## Review Scope
 Reviewed the tagged implementation diff from `change-001-builder-approved` to `change-001-implemented`, both freelancer list view implementations, both list templates, the added stylesheet, relevant freelancer tests, and the supplied implementation/evidence reports. Independently ran the focused Django freelancer test module. No application code was modified.
@@ -68,7 +68,7 @@ Reviewed the tagged implementation diff from `change-001-builder-approved` to `c
 - Both user-facing and admin-facing list flows implement the same filters and sort options.
 - Rating filtering and sorting use a queryset-level `Avg` annotation rather than a per-freelancer Python aggregation loop. The focused tests confirm expected behavior and a single SQL query containing the rating table for rating filtering and ordering.
 - The rating-order null placement matches the approved decision: unrated freelancers remain in the result set and sort last in both directions.
-- The implementation uses a checkbox list for skills, not the approved HTML multi-select. This provides multi-selection behavior but does not implement the approved control choice.
+- The implementation uses the always-expanded checkbox list approved by HD-006; it provides multi-selection and omits chips, remove buttons, and collapsible UI as approved.
 - The added `devopssite/static/css/freelancers.css` is imported by `devopssite/static/css/index.css`, which is loaded through the shared header. The styling is wired into the frontend stylesheet chain, though browser-level visual behavior was not tested.
 
 ## Test Review
@@ -77,12 +77,12 @@ Reviewed the tagged implementation diff from `change-001-builder-approved` to `c
 - **Actual results:** 15 tests passed; Django system check reported no issues. The test database was created, migrated, and cleaned up.
 - **Evidence consistency:** The independently observed 15 passing tests and clean system check are consistent with the final-run result recorded in `evidence/test-results.txt` and `implementer-report.md`.
 - **Coverage strengths:** Tests exercise both list pages, ANY and ALL result sets, status/experience/rating combinations, ascending and descending experience/rating sorts, unrated placement, one-query rating operations, selected-filter round-tripping, legacy filters, and no explicit default sort.
-- **Missing test coverage:** There is no browser-level verification of actual rendered/loaded frontend styling or interaction. There is also no test proving a native HTML multi-select is rendered; the UI test explicitly asserts checkboxes instead. Combined-filter coverage uses the default ANY mode; the ALL mode is not separately tested in combination with status, experience, or rating.
+- **Missing test coverage:** There is no browser-level verification of actual rendered/loaded frontend styling or interaction. Combined-filter coverage uses the default ANY mode; the ALL mode is not separately tested in combination with status, experience, or rating.
 
 ## Scope Review
-The core implementation changes are confined to the two approved list views, their two separate templates, and relevant freelancer tests. No model, authentication, work-request, rating-creation, or AI resume-analysis changes were present in the implementation diff.
+The core implementation changes are confined to the two freelancer list views, their separate templates, the relevant freelancer tests, and directly related presentation styling. No model, authentication, work-request, rating-creation, or AI resume-analysis changes were present in the implementation diff.
 
-The implementation also adds `devopssite/static/css/freelancers.css`, a new stylesheet not named in TASK-001's allowed-file list. It is directly related to the list UI and is imported by `devopssite/static/css/index.css`, so it is an active presentation change rather than an unrelated business change. Its addition was not explicitly listed as allowed, making it a bounded scope deviation.
+The implementation adds `devopssite/static/css/freelancers.css`. Although this file is outside TASK-001's original allowed-file list, the added `decisions.md` explicitly approves it as a bounded presentation-only deviation in HD-007. Its inclusion is therefore documented and human-approved.
 
 ## Specification Compliance
 - The core functional requirements and AC-01 through AC-09 are implemented and passed by the focused tests.
@@ -91,22 +91,33 @@ The implementation also adds `devopssite/static/css/freelancers.css`, a new styl
 - OQ-03 is implemented with nulls-last rating sorting in both directions.
 - OQ-04 is respected: the two templates remain separate.
 - OQ-05 is respected: no explicit sort is applied when no supported sort option is selected.
-- **OQ-01 is not respected:** the approved HTML multi-select was replaced with checkbox inputs in both templates.
+- The initial OQ-01 HTML multi-select decision was superseded by human-approved HD-006, which approves the always-expanded checkbox list now implemented in both templates. Both SPEC-001 and TASK-001 explicitly record this approved amendment.
 - The added stylesheet is wired into the shared CSS import chain; its actual browser rendering was not independently verified.
 
 ## Evidence Gaps
-- `experiments/change-01-freelancer-filtering/decisions.md` is absent, despite being listed in the requested implementation evidence. The approved decisions can be read in the change, specification, task, and knowledge cards, but the decision artifact itself could not be reviewed.
-- The implementer report says no final implementation commit SHA was available; repository state supplies the tagged SHA recorded above, but the report/evidence was not updated with it.
+- The previously missing `experiments/change-01-freelancer-filtering/decisions.md` is now present. HD-006 explicitly supersedes HD-001, approves the checkbox UI, and is marked approved by the human reviewer. HD-007 explicitly approves the stylesheet deviation.
+- SPEC-001 and TASK-001 now both explicitly record that HD-006 supersedes the original OQ-01 HTML multi-select decision.
+- The implementer report's stale “Not committed / no final implementation commit SHA” statement has been removed. It records commit `22ab2b1d000aec87cba80fca097e6fd97ff085aa` and tag `change-001-implemented`, which match the repository tag.
 - UI evidence consists of server-rendered template assertions; there is no browser-level evidence of live form behavior or active stylesheet loading.
 - No separate full-project test suite was run. The targeted freelancer suite covers the changed views and selected adjacent behavior, but broad compatibility claims outside that surface are not independently established here.
 
 ## Reviewer Findings
-- **Major — Approved UI decision not implemented:** OQ-01 specifies an HTML multi-select, but both pages render checkboxes instead. Although multi-selection behavior passes AC-01, the implementation departs from a human-approved decision. This requires human review and resolution before acceptance.
-- **Minor — Additional stylesheet scope:** A new 112-line stylesheet was added beyond the explicit task file list. It is directly related to the list UI and is imported by the shared `index.css`.
-- **Minor — Missing decision evidence:** The requested `decisions.md` artifact is missing, reducing the completeness of the review record.
-- **Observation — Targeted test coverage boundary:** All 15 tests in the focused module pass. There is no browser-level test, no explicit ALL-mode combined-filter test, and no full-project regression run.
+- **Resolved — Human-approved UI decision:** HD-006 explicitly supersedes OQ-01/HD-001 with an always-expanded checkbox list, matching the implementation. TASK-001 records this amendment.
+- **Resolved — Stylesheet deviation:** HD-007 explicitly approves `devopssite/static/css/freelancers.css` as a bounded presentation-only deviation.
+- **Resolved — Missing decision evidence:** `decisions.md` is now present and contains HD-006 and HD-007.
+- **Resolved — Specification alignment:** SPEC-001 now explicitly records that human-approved HD-006 supersedes the original OQ-01 HTML multi-select decision, consistent with TASK-001 and the implemented checkbox UI.
+- **Resolved — Version evidence consistency:** The implementer report now has a single consistent final implementation version record. Its SHA and tag match the repository's implementation tag.
+- **Observation — Targeted test coverage boundary:** The prior independent run passed all 15 focused tests. There is no browser-level test, no explicit ALL-mode combined-filter test, and no full-project regression run. No tests were rerun for this documentation-only re-review.
 
 ## Final Reviewer Result
-**CHANGES REQUIRED**
+**PASS WITH MINOR FINDINGS**
 
-The core search and ordering acceptance criteria pass the independent focused tests. However, the implementation does not follow the human-approved HTML multi-select decision, and the evidence record is incomplete. This is a reviewer result only; CHANGE-001 is not marked accepted. Final acceptance remains with the human reviewer.
+Both findings covered by the final focused re-review are resolved: SPEC-001 now records the human-approved HD-006 amendment, and the implementer report's final commit/tag evidence is internally consistent and matches the repository. The remaining observations in this report concern limited test coverage beyond the targeted suite (including no browser-level verification); they are not blockers for these two documentation findings. This is a reviewer result only, not final acceptance. CHANGE-001 remains for the human reviewer to accept or reject.
+
+## Focused Re-Review
+- The implementation version remains commit `22ab2b1d000aec87cba80fca097e6fd97ff085aa`, tag `change-001-implemented`; repository commands confirmed that the tag points to that SHA.
+- The implementation itself is unchanged in this re-review.
+- **Specification finding: resolved.** SPEC-001 explicitly says the original OQ-01 HTML multi-select decision was superseded by HD-006, defines the approved always-expanded checkbox list, and states that the amendment is human-approved. This matches TASK-001 and the implementation.
+- **Version evidence finding: resolved.** The stale “Not committed / no final implementation commit SHA” statement is absent. `implementer-report.md` records the final commit SHA and tag, and both match the implementation tag in the repository.
+- These checks concern documentation/version evidence only. No application code was modified and no tests were rerun.
+- Final human acceptance remains separate; CHANGE-001 is not marked accepted by this report.
