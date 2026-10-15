@@ -80,3 +80,17 @@ The implementation should produce:
 - a bounded patch to the freelancer search flow;
 - tests that prove the acceptance criteria; 
 - no unrelated changes beyond the approved scope.
+
+
+## Human-Approved Implementation Amendment
+
+The skill-selection UI defined by the original OQ-01 decision was
+superseded during implementation review.
+
+Final approved UI:
+- always-expanded checkbox list;
+- selected state preserved after submission;
+- no chips or remove buttons.
+
+Reference:
+`experiments/change-01-freelancer-filtering/decisions.md`, HD-006.

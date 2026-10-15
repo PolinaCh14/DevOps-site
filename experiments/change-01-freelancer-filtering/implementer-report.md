@@ -80,10 +80,25 @@ Added `FreelancerFilteringTests` in `devopssite/freelancer/tests.py`, with cover
 - `git diff --check`: passed.
 
 ## Deviations
-No deviations from the functional requirements, acceptance criteria, or filtering behavior in TASK-001 / SPEC-001. The directly related `devopssite/static/css/freelancers.css` stylesheet was modified to implement the explicitly requested UI presentation and checkbox-list styling; no unrelated files or backend behavior were changed.
+The initially approved native HTML multi-select was replaced with an
+always-expanded checkbox list following a human-approved UI refinement
+during implementation.
+
+This affected presentation only and did not change the approved
+filtering semantics.
+
+Recorded as HD-006 in decisions.md.
 
 ## Unfinished Work
 None. The independent Reviewer stage has not been performed, and CHANGE-001 has not been marked accepted.
 
 ## Final Commit
 Not committed; no final implementation commit SHA is available.
+
+## Final Implementation Version
+
+Commit:
+22ab2b1d000aec87cba80fca097e6fd97ff085aa
+
+Tag:
+change-001-implemented
