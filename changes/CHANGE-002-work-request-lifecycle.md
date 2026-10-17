@@ -2,11 +2,9 @@
 
 ## 1. Status
 
-Draft
+Approved
 
-This change has not yet been approved for implementation.
-
-No application code should be modified based on this document alone.
+This change and its Builder artifacts have been approved for implementation. Implementation must follow the approved SPEC-002 and TASK-002 scope.
 
 ---
 
