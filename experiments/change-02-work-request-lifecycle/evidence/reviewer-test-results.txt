@@ -1,0 +1,35 @@
+Independent Reviewer test results — CHANGE-002
+
+Target
+------
+Tag: change-002-implemented
+Commit: 2d713d82f8250b4a20c3803d456fe32327a25ab9
+Test location: isolated detached worktree at that exact commit
+
+Focused and directly affected app suites
+----------------------------------------
+Command:
+python manage.py test workrequest adminpannel notification project rating --keepdb --verbosity 1
+
+The command was invoked through the repository virtual environment after loading the ignored repository `.env` in-process. No environment values were copied into the worktree or recorded here.
+
+Result:
+Found 20 test(s).
+System check identified no issues (0 silenced).
+Ran 20 tests in 38.239s.
+OK
+
+The test runner reported using the existing test database and preserved it. No skipped tests were reported.
+
+Additional checks
+----------------
+`manage.py check`
+Result: System check identified no issues.
+
+`manage.py makemigrations --check --dry-run`
+Result: No changes detected.
+
+`git diff --check change-002-builder-approved..change-002-implemented`
+Result: reports trailing whitespace in the committed `evidence/diff.patch` artifact.
+
+The same whitespace check excluding only that evidence artifact passed. The failed preliminary test invocations documented in reviewer-commands.txt did not execute test cases and do not change the final successful result above.

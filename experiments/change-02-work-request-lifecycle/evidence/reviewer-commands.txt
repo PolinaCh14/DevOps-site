@@ -1,0 +1,49 @@
+Independent Reviewer command record — CHANGE-002
+
+Pre-review commands, run before inspecting implementation code, from the repository root:
+
+git rev-parse HEAD
+Output: dbc43dc2f511663e7df1d3f3cadd15f95225f001
+
+git status --short
+Output: empty (clean)
+
+git tag --points-at HEAD
+Output: empty
+
+Tag resolution and diff inventory:
+
+git rev-parse change-002-builder-approved
+Output: 43c0bc812a4d6ebba82cd72c29ab589782d5fedf
+
+git rev-parse change-002-implemented
+Output: 40fee0c1eb6ea02678bad8ff87a569bda9e4638e (annotated tag object)
+
+git worktree add --detach D:\piton\practice\DevOps-site-review-002 change-002-implemented
+Output: detached worktree created at implementation commit 2d713d82f8250b4a20c3803d456fe32327a25ab9.
+
+git diff --stat change-002-builder-approved..change-002-implemented
+Output: 14 files changed, 2088 insertions(+), 115 deletions(-).
+
+git diff --name-status change-002-builder-approved..change-002-implemented
+Output: inspected all 14 paths; implementation and evidence paths are listed in reviewer-report.md.
+
+The initial attempt to run `manage.py` from the worktree root failed because `manage.py` is under `devopssite\`. A second direct call failed because the isolated worktree has no local `.env`. Subsequent attempts to call Django's test command without complete Django initialization also failed before running tests. These were invocation/configuration errors; no test cases ran in those attempts.
+
+Successful independent test command, from the tagged worktree's `devopssite\` directory. It loads the existing repository `.env` without copying or exposing its values:
+
+& D:\piton\practice\DevOps-site\venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv(r'D:\piton\practice\DevOps-site\.env'); import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'devopssite.settings'); import django; django.setup(); from django.core.management import call_command; call_command('test', 'workrequest', 'adminpannel', 'notification', 'project', 'rating', keepdb=True, verbosity=1)"
+
+Django and migration checks, run against the same tagged worktree and configuration:
+
+& D:\piton\practice\DevOps-site\venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv(r'D:\piton\practice\DevOps-site\.env'); import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'devopssite.settings'); import django; django.setup(); from django.core.management import call_command; call_command('check'); call_command('makemigrations', check=True, dry_run=True)"
+
+Patch whitespace checks:
+
+git diff --check change-002-builder-approved..change-002-implemented
+Result: failed only on trailing whitespace in the committed experiments/change-02-work-request-lifecycle/evidence/diff.patch file.
+
+git diff --check change-002-builder-approved..change-002-implemented -- . ':(exclude)experiments/change-02-work-request-lifecycle/evidence/diff.patch'
+Result: passed.
+
+The isolated worktree was removed after validation. No files in the implementation were modified.
