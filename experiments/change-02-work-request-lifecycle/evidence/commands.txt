@@ -49,4 +49,12 @@ Patch whitespace validation:
 git diff --check
 Result: passed.
 
-Git status and diff summary were checked after implementation. The human-approved change to decisions.md and previous experiment blocker evidence are preserved and not included in evidence/diff.patch.
+The human-approved HD-009/HD-010 decisions are included in evidence/diff.patch. The earlier pre-implementation blocker evidence remains preserved in the experiment evidence directory and is not part of the implementation patch.
+
+Final implementation commit:
+git commit -m "Implement CHANGE-002 work request lifecycle" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+Output commit: 2d713d82f8250b4a20c3803d456fe32327a25ab9
+
+Final implementation tag:
+git tag -a change-002-implemented -m "CHANGE-002 implementation complete" 2d713d82f8250b4a20c3803d456fe32327a25ab9
+Result: annotated tag change-002-implemented points to implementation commit 2d713d82f8250b4a20c3803d456fe32327a25ab9.

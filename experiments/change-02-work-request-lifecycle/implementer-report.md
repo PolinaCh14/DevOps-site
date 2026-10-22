@@ -193,7 +193,7 @@ None within the approved implementation scope. The new data migration remains pe
 ## Final Implementation Version
 
 Commit:
-Pending until implementation commit is created
+`2d713d82f8250b4a20c3803d456fe32327a25ab9` — `Implement CHANGE-002 work request lifecycle`
 
 Tag:
-Pending until implementation commit is tagged
+`change-002-implemented` — annotated tag points to `2d713d82f8250b4a20c3803d456fe32327a25ab9`. This is the implementation tag, not an acceptance tag.
