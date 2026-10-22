@@ -6,7 +6,7 @@ from users.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, F, Q
 from rating.utils import get_average_rating_for_user
-from django.http import JsonResponse
+from django.http import JsonResponse, request
 from .utils import analyze_resume
 import markdown
 
@@ -217,7 +217,8 @@ def user_freelancer_detail(request):
         freelancer = Freelancer.objects.select_related('id_user', 'id_status').get(id_user=request.user)
         skills = FreelancerSkill.objects.select_related('id_skill').filter(id_freelancer=freelancer)
         portfolio = freelancer.portfolio_set.all()
-        rating = round(get_average_rating_for_user(request.user.id))
+        average_rating = get_average_rating_for_user(request.user.id)
+        rating = round(average_rating) if average_rating is not None else 0
 
         return render(request, 'user_freelancer_detail.html', {
             'freelancer': freelancer,
