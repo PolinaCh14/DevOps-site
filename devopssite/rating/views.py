@@ -47,7 +47,7 @@ def create_rating(request, project_id, evaluates_id):
         else:
             work_request = WorkRequest.objects.filter(
                 id_project_id=project_id,
-                id_status_id=2
+                id_status__status='Схвалено'
             ).first()
 
             evaluates_id = work_request.id_freelancer.id_user_id
@@ -77,6 +77,5 @@ def create_rating(request, project_id, evaluates_id):
         'project_id': project_id,
         'evaluates_id': evaluates_id
     })
-
 
 

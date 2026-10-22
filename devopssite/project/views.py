@@ -56,12 +56,12 @@ def user_projects_search_view(request):
 
         qs = WorkRequest.objects.filter(
             id_freelancer=freelancer.id,
-            id_status=2
+            id_status__status='Схвалено'
         )
 
         project_ids = list(WorkRequest.objects.filter(
             id_freelancer=freelancer.id,
-            id_status=2
+            id_status__status='Схвалено'
         ).values_list('id_project', flat=True))
 
 

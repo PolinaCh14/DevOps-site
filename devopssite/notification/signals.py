@@ -13,7 +13,6 @@ from .tasks import (
 @receiver(post_save, sender=WorkRequest)
 def create_notification_on_work_request(sender, instance, created, **kwargs):
     if not created:
-        print("Created WorkRequest — skipping update")
         return
 
     freelancer = instance.id_freelancer.id_user
@@ -35,33 +34,20 @@ def create_notification_on_work_request(sender, instance, created, **kwargs):
 
 
 
-@receiver(post_save, sender=WorkRequest)
-def notify_freelancer_on_status_change(sender, instance, created, **kwargs):
-    if created:
-        return
-
-    if not instance.id_freelancer or not instance.id_freelancer.id_user:
-        return
-
+def notify_freelancer_on_status_change(instance):
     freelancer = instance.id_freelancer.id_user
     project = instance.id_project
     employer = project.user
-
-
     notif_type, _ = NotificationType.objects.get_or_create(id=2)
-
     message = f"Your request to collaborate on '{project.name}' was updated. New status: {instance.id_status.status}"
 
-    notification = Notification.objects.create(
+    Notification.objects.create(
         id_sender=employer,
         id_receiver=freelancer,
         id_type=notif_type,
         message=message,
         created_at=timezone.now()
     )
-
-
-
 
 @receiver(post_save, sender=Notification)
 def send_notification(sender, instance, created, **kwargs):

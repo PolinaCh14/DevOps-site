@@ -1,13 +1,97 @@
-from django.shortcuts import render, redirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import WorkRequest, WorkRequestStatus
 from django.contrib.auth.decorators import login_required
-from users.models import User
 from project.models import Project
 from freelancer.models import Freelancer
 from django.contrib import messages
 from django.utils.timezone import now
-from django.http import HttpResponseNotFound, HttpResponseBadRequest
+from django.http import HttpResponseBadRequest
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
+from django.db import transaction
+from django.views.decorators.http import require_http_methods
+from notification.signals import notify_freelancer_on_status_change
+
+
+INITIAL_STATUS = "В очікуванні"
+LIFECYCLE_STATUS_LABELS = (
+    INITIAL_STATUS,
+    "На розгляді",
+    "Схвалено",
+    "Відхилено",
+)
+ALLOWED_TRANSITIONS = {
+    INITIAL_STATUS: {"На розгляді", "Схвалено", "Відхилено"},
+    "На розгляді": {"Схвалено", "Відхилено"},
+    "Схвалено": set(),
+    "Відхилено": set(),
+}
+
+
+def _get_status_by_label(label):
+    try:
+        return WorkRequestStatus.objects.get(status=label)
+    except (WorkRequestStatus.DoesNotExist, WorkRequestStatus.MultipleObjectsReturned) as exc:
+        raise ImproperlyConfigured(
+            f"Expected exactly one WorkRequestStatus labeled {label!r}."
+        ) from exc
+
+
+def _get_lifecycle_statuses():
+    return {label: _get_status_by_label(label) for label in LIFECYCLE_STATUS_LABELS}
+
+
+def apply_work_request_status_transition(
+    *,
+    user,
+    target_status_id,
+    work_request_id=None,
+    project_id=None,
+    freelancer_id=None,
+    submitted_project_id=None,
+):
+    with transaction.atomic():
+        work_requests = WorkRequest.objects.select_for_update()
+        if work_request_id is not None:
+            work_request = get_object_or_404(work_requests, id=work_request_id)
+        else:
+            work_request = get_object_or_404(
+                work_requests,
+                id_project_id=project_id,
+                id_freelancer_id=freelancer_id,
+            )
+
+        if not work_request.id_project_id or not work_request.id_freelancer_id:
+            raise ValidationError("Work request must have a project and freelancer.")
+        if submitted_project_id is not None and work_request.id_project_id != submitted_project_id:
+            raise ValidationError("Changing a work request's project is not permitted.")
+        if work_request.id_project.user_id != user.id:
+            raise PermissionDenied
+
+        statuses = _get_lifecycle_statuses()
+        try:
+            target_status = WorkRequestStatus.objects.get(id=target_status_id)
+        except WorkRequestStatus.DoesNotExist as exc:
+            raise ValidationError("Unknown work request status.") from exc
+
+        if target_status.status not in statuses:
+            raise ValidationError("Status is not part of the approved lifecycle.")
+
+        current_label = work_request.id_status.status
+        target_label = target_status.status
+        if current_label == target_label:
+            return work_request
+        if target_label not in ALLOWED_TRANSITIONS.get(current_label, set()):
+            raise ValidationError(
+                f"Transition from {current_label!r} to {target_label!r} is not permitted."
+            )
+
+        work_request.id_status = statuses[target_label]
+        work_request.save(update_fields=["id_status"])
+        transaction.on_commit(
+            lambda: notify_freelancer_on_status_change(work_request)
+        )
+
+    return work_request
 
 @login_required
 def freelancer_work_request(request):
@@ -58,36 +142,24 @@ def employer_work_request(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def change_request_status(request, project_id, freelancer_id):
     if request.method == 'POST':
         status_id = request.POST.get('status_id')
-        if status_id is not None:
-            try:
-                status_id = int(status_id)
-            except ValueError:
-                return HttpResponseBadRequest("Невірний формат статусу.")
-        else:
+        if status_id is None:
             return HttpResponseBadRequest("Статус не був переданий.")
-
-        project = get_object_or_404(Project, id=project_id)
-
-        if status_id == 2:
-            work_requests = WorkRequest.objects.filter(id_project=project_id)
-            for i in work_requests:
-                if i.id_freelancer.id == freelancer_id:
-                    i.id_status_id = status_id
-                    project.status.id = 2
-                else:
-                    i.id_status_id = 3
-                i.save()
-            project.save()
-        else:
-            try:
-                work_request = WorkRequest.objects.get(id_project=project_id, id_freelancer=freelancer_id)
-                work_request.id_status_id = status_id
-                work_request.save()
-            except WorkRequest.DoesNotExist:
-                return HttpResponseBadRequest("Запит не знайдено.")
+        try:
+            status_id = int(status_id)
+            apply_work_request_status_transition(
+                user=request.user,
+                target_status_id=status_id,
+                project_id=project_id,
+                freelancer_id=freelancer_id,
+            )
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Невірний формат статусу.")
+        except ValidationError as exc:
+            return HttpResponseBadRequest(str(exc))
 
         return redirect('workrequest:employer_request')
 
@@ -101,8 +173,6 @@ def change_request_status(request, project_id, freelancer_id):
 
 @login_required
 def create_work_request(request, project_id):
-    user = request.user
-
     freelancer = Freelancer.objects.get(id_user=request.user.id)
     if not freelancer:
         raise ValueError("Фрілансер з таким користувачем не знайдений")
@@ -116,10 +186,7 @@ def create_work_request(request, project_id):
         messages.error(request, "Ви вже подали заявку на цей проєкт.")
         return redirect('projects:project', project_id=project_id)
 
-    default_status = WorkRequestStatus.objects.first()
-    if not default_status:
-        messages.error(request, "Немає статусів для запиту. Зверніться до адміністратора.")
-        return redirect('projects:project', project_id=project_id)
+    default_status = _get_status_by_label(INITIAL_STATUS)
 
     WorkRequest.objects.create(
         id_status=default_status,
@@ -130,4 +197,3 @@ def create_work_request(request, project_id):
 
     messages.success(request, "Заявку успішно подано.")
     return redirect('projects:projects_search_view')
-

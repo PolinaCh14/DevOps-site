@@ -26,20 +26,23 @@ Make work-request creation and status changes explicit, validated, permission-aw
 
 ### Initial state — OQ-01 (resolved)
 
-New WorkRequests start in `очікує`. Resolve the status using its explicit label, not database row ordering or numeric ID. If the label is missing or ambiguous, fail explicitly; do not choose a fallback.
+New WorkRequests start in `В очікуванні`. Resolve the status using its exact explicit label, not database row ordering or numeric ID. If the label is missing or ambiguous, fail explicitly; do not choose a fallback.
 
 ### Lifecycle transitions — OQ-02, OQ-03, OQ-04 (resolved)
 
 | Current state | Allowed next state | Notes |
 |---|---|---|
-| `очікує` | `на розгляді` | Project owner explicitly starts review |
-| `на розгляді` | `схвалено` or `відхилено` | Project owner decides after review |
-| `схвалено` | none | Terminal for ordinary owner actions |
-| `відхилено` | none | Terminal for ordinary owner actions |
+| `В очікуванні` | `На розгляді` | Optional explicit owner action to begin active review |
+| `В очікуванні` | `Схвалено` or `Відхилено` | Owner may decide without first entering active review |
+| `На розгляді` | `Схвалено` or `Відхилено` | Owner decides after beginning active review |
+| `Схвалено` | none | Terminal for ordinary owner actions |
+| `Відхилено` | none | Terminal for ordinary owner actions |
 
 Every attempted transition not present in the human-approved matrix must be rejected without changing the target or related request state.
 
-Direct approval or rejection from `очікує` is not permitted. `на розгляді` is assigned only by an explicit owner action, never automatically at creation. Approved and rejected requests cannot be reopened or reversed by ordinary owner actions.
+Direct approval or rejection from `В очікуванні` is permitted. `На розгляді` is optional and entered only through an explicit owner action, never automatically at creation. Approved and rejected requests cannot be reopened or reversed by ordinary owner actions.
+
+This matrix supersedes the staged-only lifecycle previously recorded for OQ-02. The change is recorded as HD-010 in `experiments/change-02-work-request-lifecycle/decisions.md`; the canonical status labels and other approved OQ decisions are unchanged.
 
 ### Approval and competing requests — OQ-05, OQ-06 (resolved)
 
@@ -67,7 +70,7 @@ The employer notification on WorkRequest creation is preserved. Notify the freel
 
 ### Project status synchronization — OQ-08 (resolved)
 
-Do not synchronize Project status with WorkRequest status in CHANGE-002. Transitions to `на розгляді`, `схвалено`, or `відхилено` leave Project status unchanged. Any future Project/WorkRequest status mapping requires a separate approved change.
+Do not synchronize Project status with WorkRequest status in CHANGE-002. Transitions to `На розгляді`, `Схвалено`, or `Відхилено` leave Project status unchanged. Any future Project/WorkRequest status mapping requires a separate approved change.
 
 ## Consistency requirements
 
@@ -95,8 +98,8 @@ Do not synchronize Project status with WorkRequest status in CHANGE-002. Transit
 | AC-12 | Employer status filter still works | Employer listing filter test |
 | AC-13 | Freelancer status filter still works | Freelancer listing filter test |
 | AC-14 | Duplicate protection remains | Duplicate creation test |
-| AC-15 | Valid transitions covered | Tests cover each approved transition |
-| AC-16 | Invalid transitions covered | Tests cover rejected edges and terminal states |
+| AC-15 | Valid transitions covered | Tests cover all five approved transitions, including direct final decisions from `В очікуванні` |
+| AC-16 | Invalid transitions covered | Tests cover rejected terminal-state transitions and non-lifecycle status submissions |
 | AC-17 | Project-owner authorization covered | Owner test for all applicable status mutation routes |
 | AC-18 | Unauthorized attempts covered | Non-owner and unauthenticated tests; no mutation assertion |
 | AC-19 | Approved multiple-request behavior covered | Test that only the selected WorkRequest changes while other requests have varied states |

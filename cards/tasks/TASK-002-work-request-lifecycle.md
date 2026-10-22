@@ -6,7 +6,7 @@ Status: Approved
 
 Status: Approved
 
-**Implementation-ready: Yes.** OQ-01 through OQ-08 and this task's bounded scope have been human-approved. The decisions are recorded in `experiments/change-02-work-request-lifecycle/decisions.md` and specified in SPEC-002. Implement only within the allowed scope and behavior defined here.
+**Implementation-ready: Yes.** OQ-01 through OQ-08 and this task's bounded scope have been human-approved. The decisions, including the superseding optional-review lifecycle in HD-010, are recorded in `experiments/change-02-work-request-lifecycle/decisions.md` and specified in SPEC-002. Implement only within the allowed scope and behavior defined here.
 
 ## Objective
 
@@ -37,9 +37,9 @@ Any additional file is out of scope unless the implementer reports a blocking de
 
 ## Required implementation behavior after approval
 
-1. Assign `очікує` as the initial WorkRequest status by explicit label, not row ordering or numeric ID; fail explicitly if missing or ambiguous.
-2. Enforce exactly this transition matrix: `очікує → на розгляді`; `на розгляді → схвалено` or `відхилено`. No direct decision from `очікує`; approved and rejected are terminal for ordinary owner actions. Reject invalid transitions without mutation.
-3. Treat `на розгляді` as an explicit project-owner action to begin review; do not assign it automatically at creation.
+1. Assign `В очікуванні` as the initial WorkRequest status by exact label, not row ordering or numeric ID; fail explicitly if missing or ambiguous.
+2. Enforce exactly this transition matrix: `В очікуванні → На розгляді`, `В очікуванні → Схвалено`, `В очікуванні → Відхилено`, `На розгляді → Схвалено`, and `На розгляді → Відхилено`. `Схвалено` and `Відхилено` are terminal for ordinary owner actions. Reject other transitions without mutation.
+3. `На розгляді` is an optional explicit project-owner action to begin active review. Do not assign it automatically at creation or require it before a final decision.
 4. Enforce server-side project ownership for status changes on every applicable mutation route, including the admin-panel edit route; that route must not bypass the contract or provide a privileged override.
 5. Change only the selected WorkRequest. Multiple freelancers may be accepted for one project; never reject or otherwise mutate competing requests.
 6. Resolve lifecycle statuses by their explicit labels rather than unexplained numeric primary-key literals; fail explicitly on missing/ambiguous configuration.
@@ -50,11 +50,11 @@ Any additional file is out of scope unless the implementer reports a blocking de
 
 ## Required tests
 
-- Explicit `очікує` initial status independent of row ordering; missing/ambiguous configuration failure.
-- Both valid transitions and representative invalid transitions, including direct decision from `очікує` and transitions out of terminal states; assert no mutation on rejection.
+- Explicit `В очікуванні` initial status independent of row ordering; missing/ambiguous configuration failure.
+- All five valid transitions, including direct approval and rejection from `В очікуванні`, and representative invalid transitions out of terminal states; assert no mutation on rejection.
 - Owner authorization success and non-owner/unauthenticated denial for every applicable mutation route, including the admin-panel route.
 - Multiple requests on one project: changing the selected request must leave every other request unchanged, including previously rejected and already approved requests.
-- Project status remains unchanged for transitions to `на розгляді`, `схвалено`, and `відхилено`.
+- Project status remains unchanged for transitions to `На розгляді`, `Схвалено`, and `Відхилено`.
 - Transaction rollback and consistency behavior; verify or exercise row-level concurrency control where practical.
 - Exactly one notification for an actual status transition, no notification for unchanged saves, and no status notification if the update transaction fails.
 - Employer and freelancer status filters.
@@ -65,7 +65,7 @@ Any additional file is out of scope unless the implementer reports a blocking de
 | Acceptance criteria | Task verification |
 |---|---|
 | AC-01, AC-06 | Explicit initial-status creation tests |
-| AC-02, AC-03, AC-15, AC-16 | Complete approved transition matrix tests and rejected-edge state-preservation tests |
+| AC-02, AC-03, AC-15, AC-16 | All five valid transitions, including direct final decisions from `В очікуванні`, plus rejected-edge state-preservation tests |
 | AC-04, AC-05, AC-17, AC-18 | Owner, non-owner, and unauthenticated request tests on all applicable status mutation routes |
 | AC-07 | Review of lifecycle status resolution and direct status consumers; focused behavior tests |
 | AC-08, AC-19 | Test that approval does not reject or otherwise change any competing request |

@@ -1,0 +1,24 @@
+Command:
+From devopssite/:
+..\venv\Scripts\python.exe manage.py test workrequest adminpannel notification project rating --keepdb --verbosity 1
+
+Result before the HD-010 policy update:
+Found 19 test(s).
+Ran 19 tests in 34.305s.
+OK
+
+Final result after HD-010 implementation/test alignment:
+Found 20 test(s).
+System check identified no issues (0 silenced).
+Ran 20 tests in 116.582s.
+OK
+
+The final focused suite includes the lifecycle/admin tests and the existing project regression tests. It covers direct approval and rejection from `В очікуванні` as valid transitions. The test database setup applied WorkRequest migration 0003; the configured application database was not migrated.
+
+Additional checks:
+- `manage.py check`: passed; no issues.
+- `manage.py makemigrations --check --dry-run`: passed; no changes detected.
+- `git diff --check`: passed.
+
+Iteration note:
+An earlier test run exposed invalid test fixture values and an incorrect login in the creation test. The fixtures and login were corrected before the final run above. The final focused suite passed.

@@ -1,0 +1,1161 @@
+--- a/cards/specs/SPEC-002-work-request-lifecycle.md
++++ b/cards/specs/SPEC-002-work-request-lifecycle.md
+@@ -26,20 +26,23 @@
+ 
+ ### Initial state — OQ-01 (resolved)
+ 
+-New WorkRequests start in `очікує`. Resolve the status using its explicit label, not database row ordering or numeric ID. If the label is missing or ambiguous, fail explicitly; do not choose a fallback.
++New WorkRequests start in `В очікуванні`. Resolve the status using its exact explicit label, not database row ordering or numeric ID. If the label is missing or ambiguous, fail explicitly; do not choose a fallback.
+ 
+ ### Lifecycle transitions — OQ-02, OQ-03, OQ-04 (resolved)
+ 
+ | Current state | Allowed next state | Notes |
+ |---|---|---|
+-| `очікує` | `на розгляді` | Project owner explicitly starts review |
+-| `на розгляді` | `схвалено` or `відхилено` | Project owner decides after review |
+-| `схвалено` | none | Terminal for ordinary owner actions |
+-| `відхилено` | none | Terminal for ordinary owner actions |
++| `В очікуванні` | `На розгляді` | Optional explicit owner action to begin active review |
++| `В очікуванні` | `Схвалено` or `Відхилено` | Owner may decide without first entering active review |
++| `На розгляді` | `Схвалено` or `Відхилено` | Owner decides after beginning active review |
++| `Схвалено` | none | Terminal for ordinary owner actions |
++| `Відхилено` | none | Terminal for ordinary owner actions |
+ 
+ Every attempted transition not present in the human-approved matrix must be rejected without changing the target or related request state.
+ 
+-Direct approval or rejection from `очікує` is not permitted. `на розгляді` is assigned only by an explicit owner action, never automatically at creation. Approved and rejected requests cannot be reopened or reversed by ordinary owner actions.
++Direct approval or rejection from `В очікуванні` is permitted. `На розгляді` is optional and entered only through an explicit owner action, never automatically at creation. Approved and rejected requests cannot be reopened or reversed by ordinary owner actions.
++
++This matrix supersedes the staged-only lifecycle previously recorded for OQ-02. The change is recorded as HD-010 in `experiments/change-02-work-request-lifecycle/decisions.md`; the canonical status labels and other approved OQ decisions are unchanged.
+ 
+ ### Approval and competing requests — OQ-05, OQ-06 (resolved)
+ 
+@@ -67,7 +70,7 @@
+ 
+ ### Project status synchronization — OQ-08 (resolved)
+ 
+-Do not synchronize Project status with WorkRequest status in CHANGE-002. Transitions to `на розгляді`, `схвалено`, or `відхилено` leave Project status unchanged. Any future Project/WorkRequest status mapping requires a separate approved change.
++Do not synchronize Project status with WorkRequest status in CHANGE-002. Transitions to `На розгляді`, `Схвалено`, or `Відхилено` leave Project status unchanged. Any future Project/WorkRequest status mapping requires a separate approved change.
+ 
+ ## Consistency requirements
+ 
+@@ -95,8 +98,8 @@
+ | AC-12 | Employer status filter still works | Employer listing filter test |
+ | AC-13 | Freelancer status filter still works | Freelancer listing filter test |
+ | AC-14 | Duplicate protection remains | Duplicate creation test |
+-| AC-15 | Valid transitions covered | Tests cover each approved transition |
+-| AC-16 | Invalid transitions covered | Tests cover rejected edges and terminal states |
++| AC-15 | Valid transitions covered | Tests cover all five approved transitions, including direct final decisions from `В очікуванні` |
++| AC-16 | Invalid transitions covered | Tests cover rejected terminal-state transitions and non-lifecycle status submissions |
+ | AC-17 | Project-owner authorization covered | Owner test for all applicable status mutation routes |
+ | AC-18 | Unauthorized attempts covered | Non-owner and unauthenticated tests; no mutation assertion |
+ | AC-19 | Approved multiple-request behavior covered | Test that only the selected WorkRequest changes while other requests have varied states |
+--- a/cards/tasks/TASK-002-work-request-lifecycle.md
++++ b/cards/tasks/TASK-002-work-request-lifecycle.md
+@@ -6,7 +6,7 @@
+ 
+ Status: Approved
+ 
+-**Implementation-ready: Yes.** OQ-01 through OQ-08 and this task's bounded scope have been human-approved. The decisions are recorded in `experiments/change-02-work-request-lifecycle/decisions.md` and specified in SPEC-002. Implement only within the allowed scope and behavior defined here.
++**Implementation-ready: Yes.** OQ-01 through OQ-08 and this task's bounded scope have been human-approved. The decisions, including the superseding optional-review lifecycle in HD-010, are recorded in `experiments/change-02-work-request-lifecycle/decisions.md` and specified in SPEC-002. Implement only within the allowed scope and behavior defined here.
+ 
+ ## Objective
+ 
+@@ -37,9 +37,9 @@
+ 
+ ## Required implementation behavior after approval
+ 
+-1. Assign `очікує` as the initial WorkRequest status by explicit label, not row ordering or numeric ID; fail explicitly if missing or ambiguous.
+-2. Enforce exactly this transition matrix: `очікує → на розгляді`; `на розгляді → схвалено` or `відхилено`. No direct decision from `очікує`; approved and rejected are terminal for ordinary owner actions. Reject invalid transitions without mutation.
+-3. Treat `на розгляді` as an explicit project-owner action to begin review; do not assign it automatically at creation.
++1. Assign `В очікуванні` as the initial WorkRequest status by exact label, not row ordering or numeric ID; fail explicitly if missing or ambiguous.
++2. Enforce exactly this transition matrix: `В очікуванні → На розгляді`, `В очікуванні → Схвалено`, `В очікуванні → Відхилено`, `На розгляді → Схвалено`, and `На розгляді → Відхилено`. `Схвалено` and `Відхилено` are terminal for ordinary owner actions. Reject other transitions without mutation.
++3. `На розгляді` is an optional explicit project-owner action to begin active review. Do not assign it automatically at creation or require it before a final decision.
+ 4. Enforce server-side project ownership for status changes on every applicable mutation route, including the admin-panel edit route; that route must not bypass the contract or provide a privileged override.
+ 5. Change only the selected WorkRequest. Multiple freelancers may be accepted for one project; never reject or otherwise mutate competing requests.
+ 6. Resolve lifecycle statuses by their explicit labels rather than unexplained numeric primary-key literals; fail explicitly on missing/ambiguous configuration.
+@@ -50,11 +50,11 @@
+ 
+ ## Required tests
+ 
+-- Explicit `очікує` initial status independent of row ordering; missing/ambiguous configuration failure.
+-- Both valid transitions and representative invalid transitions, including direct decision from `очікує` and transitions out of terminal states; assert no mutation on rejection.
++- Explicit `В очікуванні` initial status independent of row ordering; missing/ambiguous configuration failure.
++- All five valid transitions, including direct approval and rejection from `В очікуванні`, and representative invalid transitions out of terminal states; assert no mutation on rejection.
+ - Owner authorization success and non-owner/unauthenticated denial for every applicable mutation route, including the admin-panel route.
+ - Multiple requests on one project: changing the selected request must leave every other request unchanged, including previously rejected and already approved requests.
+-- Project status remains unchanged for transitions to `на розгляді`, `схвалено`, and `відхилено`.
++- Project status remains unchanged for transitions to `На розгляді`, `Схвалено`, and `Відхилено`.
+ - Transaction rollback and consistency behavior; verify or exercise row-level concurrency control where practical.
+ - Exactly one notification for an actual status transition, no notification for unchanged saves, and no status notification if the update transaction fails.
+ - Employer and freelancer status filters.
+@@ -65,7 +65,7 @@
+ | Acceptance criteria | Task verification |
+ |---|---|
+ | AC-01, AC-06 | Explicit initial-status creation tests |
+-| AC-02, AC-03, AC-15, AC-16 | Complete approved transition matrix tests and rejected-edge state-preservation tests |
++| AC-02, AC-03, AC-15, AC-16 | All five valid transitions, including direct final decisions from `В очікуванні`, plus rejected-edge state-preservation tests |
+ | AC-04, AC-05, AC-17, AC-18 | Owner, non-owner, and unauthenticated request tests on all applicable status mutation routes |
+ | AC-07 | Review of lifecycle status resolution and direct status consumers; focused behavior tests |
+ | AC-08, AC-19 | Test that approval does not reject or otherwise change any competing request |
+--- a/devopssite/workrequest/views.py
++++ b/devopssite/workrequest/views.py
+@@ -1,13 +1,97 @@
+-from django.shortcuts import render, redirect
+-from django.shortcuts import get_object_or_404
++from django.shortcuts import render, redirect, get_object_or_404
+ from .models import WorkRequest, WorkRequestStatus
+ from django.contrib.auth.decorators import login_required
+-from users.models import User
+ from project.models import Project
+ from freelancer.models import Freelancer
+ from django.contrib import messages
+ from django.utils.timezone import now
+-from django.http import HttpResponseNotFound, HttpResponseBadRequest
++from django.http import HttpResponseBadRequest
++from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
++from django.db import transaction
++from django.views.decorators.http import require_http_methods
++from notification.signals import notify_freelancer_on_status_change
++
++
++INITIAL_STATUS = "В очікуванні"
++LIFECYCLE_STATUS_LABELS = (
++    INITIAL_STATUS,
++    "На розгляді",
++    "Схвалено",
++    "Відхилено",
++)
++ALLOWED_TRANSITIONS = {
++    INITIAL_STATUS: {"На розгляді", "Схвалено", "Відхилено"},
++    "На розгляді": {"Схвалено", "Відхилено"},
++    "Схвалено": set(),
++    "Відхилено": set(),
++}
++
++
++def _get_status_by_label(label):
++    try:
++        return WorkRequestStatus.objects.get(status=label)
++    except (WorkRequestStatus.DoesNotExist, WorkRequestStatus.MultipleObjectsReturned) as exc:
++        raise ImproperlyConfigured(
++            f"Expected exactly one WorkRequestStatus labeled {label!r}."
++        ) from exc
++
++
++def _get_lifecycle_statuses():
++    return {label: _get_status_by_label(label) for label in LIFECYCLE_STATUS_LABELS}
++
++
++def apply_work_request_status_transition(
++    *,
++    user,
++    target_status_id,
++    work_request_id=None,
++    project_id=None,
++    freelancer_id=None,
++    submitted_project_id=None,
++):
++    with transaction.atomic():
++        work_requests = WorkRequest.objects.select_for_update()
++        if work_request_id is not None:
++            work_request = get_object_or_404(work_requests, id=work_request_id)
++        else:
++            work_request = get_object_or_404(
++                work_requests,
++                id_project_id=project_id,
++                id_freelancer_id=freelancer_id,
++            )
++
++        if not work_request.id_project_id or not work_request.id_freelancer_id:
++            raise ValidationError("Work request must have a project and freelancer.")
++        if submitted_project_id is not None and work_request.id_project_id != submitted_project_id:
++            raise ValidationError("Changing a work request's project is not permitted.")
++        if work_request.id_project.user_id != user.id:
++            raise PermissionDenied
++
++        statuses = _get_lifecycle_statuses()
++        try:
++            target_status = WorkRequestStatus.objects.get(id=target_status_id)
++        except WorkRequestStatus.DoesNotExist as exc:
++            raise ValidationError("Unknown work request status.") from exc
++
++        if target_status.status not in statuses:
++            raise ValidationError("Status is not part of the approved lifecycle.")
++
++        current_label = work_request.id_status.status
++        target_label = target_status.status
++        if current_label == target_label:
++            return work_request
++        if target_label not in ALLOWED_TRANSITIONS.get(current_label, set()):
++            raise ValidationError(
++                f"Transition from {current_label!r} to {target_label!r} is not permitted."
++            )
++
++        work_request.id_status = statuses[target_label]
++        work_request.save(update_fields=["id_status"])
++        transaction.on_commit(
++            lambda: notify_freelancer_on_status_change(work_request)
++        )
++
++    return work_request
+ 
+ @login_required
+ def freelancer_work_request(request):
+@@ -58,36 +142,24 @@
+ 
+ 
+ @login_required
++@require_http_methods(["GET", "POST"])
+ def change_request_status(request, project_id, freelancer_id):
+     if request.method == 'POST':
+         status_id = request.POST.get('status_id')
+-        if status_id is not None:
+-            try:
+-                status_id = int(status_id)
+-            except ValueError:
+-                return HttpResponseBadRequest("Невірний формат статусу.")
+-        else:
++        if status_id is None:
+             return HttpResponseBadRequest("Статус не був переданий.")
+-
+-        project = get_object_or_404(Project, id=project_id)
+-
+-        if status_id == 2:
+-            work_requests = WorkRequest.objects.filter(id_project=project_id)
+-            for i in work_requests:
+-                if i.id_freelancer.id == freelancer_id:
+-                    i.id_status_id = status_id
+-                    project.status.id = 2
+-                else:
+-                    i.id_status_id = 3
+-                i.save()
+-            project.save()
+-        else:
+-            try:
+-                work_request = WorkRequest.objects.get(id_project=project_id, id_freelancer=freelancer_id)
+-                work_request.id_status_id = status_id
+-                work_request.save()
+-            except WorkRequest.DoesNotExist:
+-                return HttpResponseBadRequest("Запит не знайдено.")
++        try:
++            status_id = int(status_id)
++            apply_work_request_status_transition(
++                user=request.user,
++                target_status_id=status_id,
++                project_id=project_id,
++                freelancer_id=freelancer_id,
++            )
++        except (TypeError, ValueError):
++            return HttpResponseBadRequest("Невірний формат статусу.")
++        except ValidationError as exc:
++            return HttpResponseBadRequest(str(exc))
+ 
+         return redirect('workrequest:employer_request')
+ 
+@@ -101,8 +173,6 @@
+ 
+ @login_required
+ def create_work_request(request, project_id):
+-    user = request.user
+-
+     freelancer = Freelancer.objects.get(id_user=request.user.id)
+     if not freelancer:
+         raise ValueError("Фрілансер з таким користувачем не знайдений")
+@@ -116,10 +186,7 @@
+         messages.error(request, "Ви вже подали заявку на цей проєкт.")
+         return redirect('projects:project', project_id=project_id)
+ 
+-    default_status = WorkRequestStatus.objects.first()
+-    if not default_status:
+-        messages.error(request, "Немає статусів для запиту. Зверніться до адміністратора.")
+-        return redirect('projects:project', project_id=project_id)
++    default_status = _get_status_by_label(INITIAL_STATUS)
+ 
+     WorkRequest.objects.create(
+         id_status=default_status,
+@@ -130,4 +197,3 @@
+ 
+     messages.success(request, "Заявку успішно подано.")
+     return redirect('projects:projects_search_view')
+-
+--- /dev/null
++++ b/devopssite/workrequest/migrations/0003_ensure_reviewing_work_request_status.py
+@@ -0,0 +1,29 @@
++from django.db import migrations
++
++
++REVIEWING_STATUS = "На розгляді"
++
++
++def ensure_reviewing_status(apps, schema_editor):
++    WorkRequestStatus = apps.get_model("workrequest", "WorkRequestStatus")
++    database = schema_editor.connection.alias
++    matches = WorkRequestStatus.objects.using(database).filter(status=REVIEWING_STATUS)
++    match_count = matches.count()
++
++    if match_count > 1:
++        raise RuntimeError(
++            f"Expected at most one WorkRequestStatus labeled {REVIEWING_STATUS!r}."
++        )
++    if match_count == 0:
++        WorkRequestStatus.objects.using(database).create(status=REVIEWING_STATUS)
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ("workrequest", "0002_alter_workrequest_id_freelancer_and_more"),
++    ]
++
++    operations = [
++        migrations.RunPython(ensure_reviewing_status, migrations.RunPython.noop),
++    ]
+--- a/devopssite/workrequest/tests.py
++++ b/devopssite/workrequest/tests.py
+@@ -1,3 +1,432 @@
+-from django.test import TestCase
+-
+-# Create your tests here.
++from django.contrib.auth import get_user_model
++from django.core.exceptions import ImproperlyConfigured
++from django.db import connection, transaction
++from django.test.utils import CaptureQueriesContext
++from django.test import TestCase, override_settings
++from django.urls import reverse
++
++from freelancer.models import Freelancer, FreelancerStatus
++from notification.models import Notification
++from project.models import Project, Status
++from users.models import Role
++
++from .models import WorkRequest, WorkRequestStatus
++from .views import (
++    INITIAL_STATUS,
++    LIFECYCLE_STATUS_LABELS,
++    _get_lifecycle_statuses,
++    _get_status_by_label,
++    apply_work_request_status_transition,
++)
++
++
++User = get_user_model()
++
++
++class WorkRequestTestData:
++    def setUp(self):
++        self.owner = self.create_user("owner")
++        self.other_owner = self.create_user("other-owner")
++        self.freelancer_user = self.create_user("freelancer")
++        self.freelancer = self.create_freelancer(self.freelancer_user)
++        self.project_status = Status.objects.create(status="Відкрито")
++        self.project = self.create_project(self.owner)
++        self.assertEqual(
++            WorkRequestStatus.objects.filter(status="На розгляді").count(), 1
++        )
++        self.statuses = {}
++        for label in LIFECYCLE_STATUS_LABELS:
++            if label == "На розгляді":
++                self.statuses[label] = WorkRequestStatus.objects.get(status=label)
++            else:
++                self.statuses[label] = WorkRequestStatus.objects.get_or_create(
++                    status=label
++                )[0]
++        self.client.force_login(self.owner)
++
++    def create_user(self, name):
++        role, _ = Role.objects.get_or_create(role="Lifecycle test")
++        return User.objects.create_user(
++            email=f"{name}@example.com",
++            password="test-password",
++            name=name,
++            surname="Tester",
++            phone=f"{name[:14]}-phone",
++            role=role,
++        )
++
++    def create_freelancer(self, user):
++        status, _ = FreelancerStatus.objects.get_or_create(status="Available")
++        return Freelancer.objects.create(id_user=user, id_status=status)
++
++    def create_project(self, owner):
++        return Project.objects.create(
++            user=owner,
++            status=self.project_status,
++            name="Lifecycle project",
++            description="Project for lifecycle tests",
++        )
++
++    def create_request(self, freelancer=None, status_label=INITIAL_STATUS, project=None):
++        freelancer = freelancer or self.freelancer
++        return WorkRequest.objects.create(
++            id_status=self.statuses[status_label],
++            id_freelancer=freelancer,
++            id_project=project or self.project,
++            created_at="2026-10-20",
++        )
++
++    def post_status(self, work_request, status_label, client=None):
++        client = client or self.client
++        return client.post(
++            reverse(
++                "workrequest:change_request_status",
++                args=[work_request.id_project_id, work_request.id_freelancer_id],
++            ),
++            {"status_id": self.statuses[status_label].id},
++        )
++
++
++@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
++class WorkRequestLifecycleTests(WorkRequestTestData, TestCase):
++    def test_initial_status_is_selected_by_label_not_row_order(self):
++        self.assertNotEqual(WorkRequestStatus.objects.first().status, INITIAL_STATUS)
++        self.client.force_login(self.freelancer_user)
++
++        self.client.get(
++            reverse("workrequest:create_work_request", args=[self.project.id])
++        )
++
++        created = WorkRequest.objects.get(
++            id_project=self.project, id_freelancer=self.freelancer
++        )
++        self.assertEqual(created.id_status.status, INITIAL_STATUS)
++        self.assertEqual(
++            Notification.objects.filter(id_receiver=self.owner).count(), 1
++        )
++        self.assertIn(
++            "sent a collaboration request",
++            Notification.objects.get(id_receiver=self.owner).message,
++        )
++
++    def test_missing_or_ambiguous_required_status_fails_explicitly(self):
++        for label in LIFECYCLE_STATUS_LABELS:
++            WorkRequestStatus.objects.filter(status=label).delete()
++            with self.assertRaises(ImproperlyConfigured):
++                _get_status_by_label(label)
++            with self.assertRaises(ImproperlyConfigured):
++                _get_lifecycle_statuses()
++            WorkRequestStatus.objects.create(status=label)
++            WorkRequestStatus.objects.create(status=label)
++            with self.assertRaises(ImproperlyConfigured):
++                _get_status_by_label(label)
++            with self.assertRaises(ImproperlyConfigured):
++                _get_lifecycle_statuses()
++            WorkRequestStatus.objects.filter(status=label).delete()
++            WorkRequestStatus.objects.create(status=label)
++
++    def test_migration_provides_exactly_one_reviewing_status(self):
++        self.assertEqual(
++            WorkRequestStatus.objects.filter(status="На розгляді").count(), 1
++        )
++
++    def test_each_approved_transition_succeeds(self):
++        request = self.create_request()
++        with self.captureOnCommitCallbacks(execute=True):
++            response = self.post_status(request, "На розгляді")
++        self.assertEqual(response.status_code, 302)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, "На розгляді")
++
++        with self.captureOnCommitCallbacks(execute=True):
++            response = self.post_status(request, "Схвалено")
++        self.assertEqual(response.status_code, 302)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, "Схвалено")
++
++        rejected_request = self.create_request(
++            freelancer=self.create_freelancer(self.create_user("second-freelancer"))
++        )
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post_status(rejected_request, "На розгляді")
++            response = self.post_status(rejected_request, "Відхилено")
++        self.assertEqual(response.status_code, 302)
++        rejected_request.refresh_from_db()
++        self.assertEqual(rejected_request.id_status.status, "Відхилено")
++
++        direct_approval = self.create_request(
++            freelancer=self.create_freelancer(self.create_user("direct-approval"))
++        )
++        direct_rejection = self.create_request(
++            freelancer=self.create_freelancer(self.create_user("direct-rejection"))
++        )
++        with self.captureOnCommitCallbacks(execute=True):
++            approved_response = self.post_status(direct_approval, "Схвалено")
++            rejected_response = self.post_status(direct_rejection, "Відхилено")
++        self.assertEqual(approved_response.status_code, 302)
++        self.assertEqual(rejected_response.status_code, 302)
++        direct_approval.refresh_from_db()
++        direct_rejection.refresh_from_db()
++        self.assertEqual(direct_approval.id_status.status, "Схвалено")
++        self.assertEqual(direct_rejection.id_status.status, "Відхилено")
++
++    def test_terminal_transitions_do_not_mutate(self):
++        for terminal in ("Схвалено", "Відхилено"):
++            request = self.create_request(
++                freelancer=self.create_freelancer(self.create_user(f"terminal-{terminal}")),
++                status_label=terminal,
++            )
++            for label in LIFECYCLE_STATUS_LABELS:
++                if label == terminal:
++                    continue
++                response = self.post_status(request, label)
++                self.assertEqual(response.status_code, 400)
++                request.refresh_from_db()
++                self.assertEqual(request.id_status.status, terminal)
++
++    def test_non_lifecycle_status_is_rejected_without_mutation(self):
++        request = self.create_request()
++        unknown_status = WorkRequestStatus.objects.create(status="Невідомий")
++        response = self.client.post(
++            reverse(
++                "workrequest:change_request_status",
++                args=[request.id_project_id, request.id_freelancer_id],
++            ),
++            {"status_id": unknown_status.id},
++        )
++        self.assertEqual(response.status_code, 400)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++
++    def test_owner_authorization_and_unauthorized_denial(self):
++        request = self.create_request()
++        non_owner_client = self.client_class()
++        non_owner_client.force_login(self.other_owner)
++        response = self.post_status(request, "На розгляді", non_owner_client)
++        self.assertEqual(response.status_code, 403)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++
++        anonymous_client = self.client_class()
++        response = self.post_status(request, "На розгляді", anonymous_client)
++        self.assertEqual(response.status_code, 302)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++
++    def test_only_selected_request_changes_and_project_status_is_unchanged(self):
++        approved_competitor = self.create_request(
++            freelancer=self.create_freelancer(
++                self.create_user("approved-competitor")
++            ),
++            status_label="Схвалено",
++        )
++        rejected_competitor = self.create_request(
++            freelancer=self.create_freelancer(
++                self.create_user("rejected-competitor")
++            ),
++            status_label="Відхилено",
++        )
++        selected = self.create_request(
++            freelancer=self.create_freelancer(self.create_user("selected"))
++        )
++        rejected_selected = self.create_request(
++            freelancer=self.create_freelancer(
++                self.create_user("rejected-selected")
++            )
++        )
++        initial_project_status_id = self.project.status_id
++
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post_status(selected, "На розгляді")
++            self.post_status(selected, "Схвалено")
++            self.post_status(rejected_selected, "На розгляді")
++            self.post_status(rejected_selected, "Відхилено")
++
++        selected.refresh_from_db()
++        rejected_selected.refresh_from_db()
++        approved_competitor.refresh_from_db()
++        rejected_competitor.refresh_from_db()
++        self.project.refresh_from_db()
++        self.assertEqual(selected.id_status.status, "Схвалено")
++        self.assertEqual(rejected_selected.id_status.status, "Відхилено")
++        self.assertEqual(approved_competitor.id_status.status, "Схвалено")
++        self.assertEqual(rejected_competitor.id_status.status, "Відхилено")
++        self.assertEqual(self.project.status_id, initial_project_status_id)
++
++    def test_status_change_notification_occurs_once_only_for_real_transition(self):
++        request = self.create_request()
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post_status(request, "На розгляді")
++        notifications = Notification.objects.filter(
++            id_receiver=self.freelancer_user,
++            message__contains="New status:",
++        )
++        self.assertEqual(notifications.count(), 1)
++        self.assertIn("На розгляді", notifications.get().message)
++
++        request.refresh_from_db()
++        request.save()
++        self.assertEqual(notifications.count(), 1)
++
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post_status(request, "Схвалено")
++        self.assertEqual(notifications.count(), 2)
++
++        with self.captureOnCommitCallbacks(execute=True):
++            self.post_status(request, "Схвалено")
++        self.assertEqual(notifications.count(), 2)
++
++    def test_rolled_back_transition_does_not_notify(self):
++        request = self.create_request()
++        with self.captureOnCommitCallbacks(execute=True):
++            with self.assertRaises(RuntimeError):
++                with transaction.atomic():
++                    apply_work_request_status_transition(
++                        user=self.owner,
++                        target_status_id=self.statuses["На розгляді"].id,
++                        work_request_id=request.id,
++                    )
++                    raise RuntimeError("rollback")
++
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++        self.assertFalse(
++            Notification.objects.filter(id_receiver=self.freelancer_user).exists()
++        )
++
++    def test_transition_query_locks_the_selected_request_where_supported(self):
++        if not connection.features.has_select_for_update:
++            self.skipTest("Database backend does not support SELECT FOR UPDATE.")
++        request = self.create_request()
++        with self.captureOnCommitCallbacks(execute=False):
++            with CaptureQueriesContext(connection) as queries:
++                apply_work_request_status_transition(
++                    user=self.owner,
++                    target_status_id=self.statuses["На розгляді"].id,
++                    work_request_id=request.id,
++                )
++        self.assertTrue(
++            any("FOR UPDATE" in query["sql"].upper() for query in queries.captured_queries)
++        )
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++
++    def test_owner_and_freelancer_status_filters_remain_available(self):
++        accepted = self.create_request(status_label="Схвалено")
++        self.create_request(
++            freelancer=self.create_freelancer(self.create_user("filtered-out")),
++            status_label="Відхилено",
++        )
++
++        employer_response = self.client.get(
++            reverse("workrequest:employer_request"),
++            {"status": self.statuses["Схвалено"].id},
++        )
++        self.assertEqual(employer_response.status_code, 200)
++        self.assertEqual(list(employer_response.context["work_request"]), [accepted])
++
++        freelancer_client = self.client_class()
++        freelancer_client.force_login(self.freelancer_user)
++        freelancer_response = freelancer_client.get(
++            reverse("workrequest:freelancer_request"),
++            {"status": self.statuses["Схвалено"].id},
++        )
++        self.assertEqual(freelancer_response.status_code, 200)
++        self.assertEqual(list(freelancer_response.context["work_request"]), [accepted])
++
++    def test_duplicate_work_request_protection_remains(self):
++        self.client.force_login(self.freelancer_user)
++        self.client.get(
++            reverse("workrequest:create_work_request", args=[self.project.id])
++        )
++        self.client.get(
++            reverse("workrequest:create_work_request", args=[self.project.id])
++        )
++        self.assertEqual(
++            WorkRequest.objects.filter(
++                id_project=self.project, id_freelancer=self.freelancer
++            ).count(),
++            1,
++        )
++
++
++@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
++class AdminWorkRequestLifecycleTests(WorkRequestTestData, TestCase):
++    def test_admin_mutation_uses_same_lifecycle_and_owner_authorization(self):
++        request = self.create_request()
++        url = reverse("adminp:update_work_request_a", args=[request.id])
++        response = self.client.post(
++            url,
++            {
++                "status": self.statuses["Схвалено"].id,
++                "project": self.project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 302)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, "Схвалено")
++
++        reviewed_request = self.create_request(
++            freelancer=self.create_freelancer(self.create_user("admin-review-flow"))
++        )
++        url = reverse("adminp:update_work_request_a", args=[reviewed_request.id])
++        response = self.client.post(
++            url,
++            {
++                "status": self.statuses["На розгляді"].id,
++                "project": self.project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 302)
++        reviewed_request.refresh_from_db()
++        self.assertEqual(reviewed_request.id_status.status, "На розгляді")
++
++        response = self.client.post(
++            url,
++            {
++                "status": self.statuses["Схвалено"].id,
++                "project": self.project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 302)
++        reviewed_request.refresh_from_db()
++        self.assertEqual(reviewed_request.id_status.status, "Схвалено")
++
++    def test_admin_route_rejects_non_owner_project_change_and_anonymous_user(self):
++        request = self.create_request()
++        another_project = self.create_project(self.other_owner)
++        url = reverse("adminp:update_work_request_a", args=[request.id])
++
++        response = self.client.post(
++            url,
++            {
++                "status": self.statuses["На розгляді"].id,
++                "project": another_project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 400)
++        request.refresh_from_db()
++        self.assertEqual(request.id_project_id, self.project.id)
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
++
++        non_owner_client = self.client_class()
++        non_owner_client.force_login(self.other_owner)
++        response = non_owner_client.post(
++            url,
++            {
++                "status": self.statuses["На розгляді"].id,
++                "project": self.project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 403)
++
++        anonymous_client = self.client_class()
++        response = anonymous_client.post(
++            url,
++            {
++                "status": self.statuses["На розгляді"].id,
++                "project": self.project.id,
++            },
++        )
++        self.assertEqual(response.status_code, 302)
++        request.refresh_from_db()
++        self.assertEqual(request.id_status.status, INITIAL_STATUS)
+--- a/devopssite/adminpannel/views.py
++++ b/devopssite/adminpannel/views.py
+@@ -13,6 +13,9 @@
+ from skill.models import Skill
+ from django.views.decorators.http import require_POST
+ from django.http import HttpResponseBadRequest
++from django.core.exceptions import ValidationError
++from django.views.decorators.http import require_http_methods
++from workrequest.views import apply_work_request_status_transition
+ # Create your views here.
+ 
+ 
+@@ -482,49 +485,31 @@
+ 
+ 
+ @login_required
++@require_http_methods(["GET", "POST"])
+ def update_work_request(request, work_request_id):
++    if request.method == 'POST':
++        status_id = request.POST.get('status')
++        project_id = request.POST.get('project')
++        if status_id is None or project_id is None:
++            return HttpResponseBadRequest("Статус і проєкт обов'язкові.")
++        try:
++            status_id = int(status_id)
++            project_id = int(project_id)
++            apply_work_request_status_transition(
++                user=request.user,
++                target_status_id=status_id,
++                work_request_id=work_request_id,
++                submitted_project_id=project_id,
++            )
++        except (TypeError, ValueError):
++            return HttpResponseBadRequest("Невірний формат статусу або проєкту.")
++        except ValidationError as exc:
++            return HttpResponseBadRequest(str(exc))
++        return redirect('adminp:all_work_request_a')
++
+     work_request = get_object_or_404(WorkRequest, id=work_request_id)
+     statuses = WorkRequestStatus.objects.all()
+     projects = Project.objects.all()
+-
+-    if request.method == 'POST':
+-        status_id = int(request.POST.get('status'))
+-        project_id = int(request.POST.get('project'))
+-
+-        old_status_id = work_request.id_status_id
+-        old_project_id = work_request.id_project_id
+-        freelancer_id = work_request.id_freelancer_id
+-
+-        if project_id != old_project_id:
+-            work_request.id_project_id = project_id
+-
+-        if status_id != old_status_id:
+-            work_request.id_status_id = status_id
+-
+-            if status_id == 2:
+-                work_requests = WorkRequest.objects.filter(id_project=project_id)
+-                for i in work_requests:
+-                    if i.id_freelancer and i.id_freelancer.id == freelancer_id:
+-                        i.id_status_id = 2
+-                    else:
+-                        i.id_status_id = 3
+-                    i.save()
+-
+-                project = get_object_or_404(Project, id=project_id)
+-                project.status_id = 2
+-                project.save()
+-
+-            else:
+-                try:
+-                    wr = WorkRequest.objects.get(id_project=project_id, id_freelancer_id=freelancer_id)
+-                    wr.id_status_id = status_id
+-                    wr.save()
+-                except WorkRequest.DoesNotExist:
+-                    return HttpResponseBadRequest("Запит не знайдено.")
+-
+-        work_request.save()
+-        return redirect('adminp:all_work_request_a')
+-
+     return render(request, 'update_work_request.html', {
+         'work_request': work_request,
+         'statuses': statuses,
+--- a/devopssite/notification/signals.py
++++ b/devopssite/notification/signals.py
+@@ -13,7 +13,6 @@
+ @receiver(post_save, sender=WorkRequest)
+ def create_notification_on_work_request(sender, instance, created, **kwargs):
+     if not created:
+-        print("Created WorkRequest — skipping update")
+         return
+ 
+     freelancer = instance.id_freelancer.id_user
+@@ -35,24 +34,14 @@
+ 
+ 
+ 
+-@receiver(post_save, sender=WorkRequest)
+-def notify_freelancer_on_status_change(sender, instance, created, **kwargs):
+-    if created:
+-        return
+-
+-    if not instance.id_freelancer or not instance.id_freelancer.id_user:
+-        return
+-
++def notify_freelancer_on_status_change(instance):
+     freelancer = instance.id_freelancer.id_user
+     project = instance.id_project
+     employer = project.user
+-
+-
+     notif_type, _ = NotificationType.objects.get_or_create(id=2)
+-
+     message = f"Your request to collaborate on '{project.name}' was updated. New status: {instance.id_status.status}"
+ 
+-    notification = Notification.objects.create(
++    Notification.objects.create(
+         id_sender=employer,
+         id_receiver=freelancer,
+         id_type=notif_type,
+@@ -60,9 +49,6 @@
+         created_at=timezone.now()
+     )
+ 
+-
+-
+-
+ @receiver(post_save, sender=Notification)
+ def send_notification(sender, instance, created, **kwargs):
+     """Send an email when new notification created"""
+--- a/devopssite/project/views.py
++++ b/devopssite/project/views.py
+@@ -56,12 +56,12 @@
+ 
+         qs = WorkRequest.objects.filter(
+             id_freelancer=freelancer.id,
+-            id_status=2
++            id_status__status='Схвалено'
+         )
+ 
+         project_ids = list(WorkRequest.objects.filter(
+             id_freelancer=freelancer.id,
+-            id_status=2
++            id_status__status='Схвалено'
+         ).values_list('id_project', flat=True))
+ 
+ 
+--- a/devopssite/rating/views.py
++++ b/devopssite/rating/views.py
+@@ -47,7 +47,7 @@
+         else:
+             work_request = WorkRequest.objects.filter(
+                 id_project_id=project_id,
+-                id_status_id=2
++                id_status__status='Схвалено'
+             ).first()
+ 
+             evaluates_id = work_request.id_freelancer.id_user_id
+@@ -79,4 +79,3 @@
+     })
+ 
+ 
+-
+--- a/experiments/change-02-work-request-lifecycle/decisions.md
++++ b/experiments/change-02-work-request-lifecycle/decisions.md
+@@ -41,3 +41,43 @@
+ Any future Project/WorkRequest status mapping requires a separate approved change.
+ 
+ OQ-08 final decision supersedes the earlier accidental synchronization choice.
++
++## HD-009 — WorkRequest status label mapping
++
++Actual deployment labels are authoritative.
++
++Approved canonical labels:
++- `В очікуванні`
++- `На розгляді`
++- `Схвалено`
++- `Відхилено`
++
++Lifecycle:
++`В очікуванні → На розгляді → Схвалено | Відхилено`
++
++Existing labels are not renamed.
++`На розгляді` must be added through a reproducible repository-managed mechanism.
++
++Status:
++Approved by Human Reviewer.
++
++## HD-010 — Optional active-review stage
++
++This decision supersedes only the previously approved staged-only transition
++matrix in OQ-02 and the lifecycle summary in HD-009. The canonical status
++labels and all other approved OQ decisions remain unchanged.
++
++Approved lifecycle:
++- `В очікуванні` → `На розгляді`
++- `В очікуванні` → `Схвалено`
++- `В очікуванні` → `Відхилено`
++- `На розгляді` → `Схвалено`
++- `На розгляді` → `Відхилено`
++
++`На розгляді` is an optional, explicit project-owner active-review state.
++It is not assigned automatically at creation and is not required before a
++final decision. `Схвалено` and `Відхилено` remain terminal for ordinary
++project-owner actions.
++
++Status:
++Approved by Human Reviewer.--- /dev/null
++++ b/experiments/change-02-work-request-lifecycle/implementer-report.md
+@@ -0,0 +1,199 @@
++# Implementer Report
++
++## Implementer Stage Status
++
++Completed for the approved CHANGE-002 scope. This is not an independent review or a CHANGE-002 acceptance decision.
++
++## Agent Configuration
++
++Experiment:
++CHANGE-002 / Experiment 2
++
++Role:
++Implementer
++
++Environment:
++VS Code integrated agent
++
++Model:
++Model name not exposed in this session
++
++Session type:
++Independent session
++
++Repository starting commit:
++43c0bc812a4d6ebba82cd72c29ab589782d5fedf
++
++Repository starting tag:
++change-002-builder-approved
++
++Expected starting tag:
++change-002-builder-approved
++
++Working tree state:
++Initial implementation session: clean. On resuming after the human label decision, the working tree contained the pre-implementation report/evidence and the human-approved HD-009 addition to `decisions.md`; those changes were preserved.
++
++---
++
++## Approved Inputs
++
++- `changes/CHANGE-002-work-request-lifecycle.md`
++- `cards/knowledge/work-request.md`
++- `cards/knowledge/work-request-lifecycle.md`
++- `cards/knowledge/project-work-request-contract.md`
++- `cards/knowledge/work-request-notifications.md`
++- `cards/specs/SPEC-002-work-request-lifecycle.md`
++- `cards/tasks/TASK-002-work-request-lifecycle.md`
++- `experiments/change-02-work-request-lifecycle/decisions.md`, including human-approved HD-009 and superseding HD-010:
++  - `В очікуванні`
++  - `На розгляді`
++  - `Схвалено`
++  - `Відхилено`
++  - lifecycle from HD-010: `В очікуванні → На розгляді`, `В очікуванні → Схвалено`, `В очікуванні → Відхилено`, `На розгляді → Схвалено`, and `На розгляді → Відхилено`
++  - existing status rows are not renamed
++- Human-approved bounded extension: add one WorkRequest data migration to introduce `На розгляді` when missing, fail if ambiguous, and make no schema changes.
++- `docs/METHODOLOGY.md`
++- `cards/handoff/HANDOFF-001.md`
++
++---
++
++## Pre-Implementation Verification
++
++The initial baseline was commit `43c0bc812a4d6ebba82cd72c29ab589782d5fedf`, tag `change-002-builder-approved`, with a clean working tree. Repository inspection confirmed that the existing initial status selection used row ordering and that the existing ordinary and admin status paths used numeric IDs and had no shared transition guard.
++
++The configured database was queried read-only and contained one row each for `В очікуванні`, `Відхилено`, and `Схвалено`; it did not yet contain `На розгляді`. The human approved HD-009 to use these exact deployed labels as canonical and approved the bounded migration extension. Existing labels were left unchanged. The migration was applied by Django's test-database migration setup during tests; the configured application database was not migrated or modified.
++
++After implementation, the human approved HD-010, making `На розгляді` optional before a final decision. The transition matrix and tests were updated to allow direct approval/rejection from `В очікуванні`; terminal-state rules and all other OQ decisions were preserved.
++
++---
++
++## Files Changed
++
++Implementation:
++
++- `cards/specs/SPEC-002-work-request-lifecycle.md` — updated to the superseding HD-010 lifecycle matrix
++- `cards/tasks/TASK-002-work-request-lifecycle.md` — updated transition behavior and test expectations for optional review
++- `devopssite/workrequest/views.py`
++- `devopssite/workrequest/migrations/0003_ensure_reviewing_work_request_status.py` — bounded scope extension approved before implementation; data-only migration, no schema change
++- `devopssite/workrequest/tests.py`
++- `devopssite/adminpannel/views.py`
++- `devopssite/notification/signals.py`
++- `devopssite/project/views.py`
++- `devopssite/rating/views.py`
++- `experiments/change-02-work-request-lifecycle/decisions.md` — recorded superseding HD-010; the duplicate equivalent HD-010 section was consolidated after user approval
++
++Requested experiment evidence:
++
++- `experiments/change-02-work-request-lifecycle/implementer-report.md`
++- `experiments/change-02-work-request-lifecycle/evidence/commands.txt`
++- `experiments/change-02-work-request-lifecycle/evidence/test-results.txt`
++- `experiments/change-02-work-request-lifecycle/evidence/diff.patch`
++
++The human-added HD-009 was present before implementation resumed and its text was preserved. HD-010 was added to record the subsequent human decision.
++
++## Implementation Summary
++
++- Resolve lifecycle statuses by exact canonical labels. Missing or duplicate labels raise an explicit `ImproperlyConfigured` error; invalid requested transitions return HTTP 400.
++- Create new requests with `В очікуванні`, independent of status row order.
++- Add a data migration that creates `На розгляді` only when absent, does not rename or update existing rows, and fails if duplicate exact rows exist. Its reverse is intentionally a no-op so it cannot delete a status row that may already be referenced.
++- Use the human-approved final lifecycle: `В очікуванні → На розгляді`, `В очікуванні → Схвалено`, `В очікуванні → Відхилено`, `На розгляді → Схвалено`, and `На розгляді → Відхилено`. `Схвалено` and `Відхилено` are terminal; active review is optional.
++- Use one shared status transition operation for ordinary and admin-panel routes. It enforces project ownership, only changes the selected request, rejects project reassignment through the admin edit path, and leaves Project status untouched.
++- Allow final approval or rejection directly from `В очікуванні` as well as from `На розгляді`; entering active review remains an explicit optional owner action.
++- Use actual deployed WorkRequest labels consistently: `В очікуванні`, `На розгляді`, `Схвалено`, and `Відхилено`. Existing labels are not renamed; the data migration supplies the missing active-review label.
++- Preserve multiple accepted freelancers per project: transitions affect only the selected WorkRequest and do not reject competing requests.
++- Preserve employer and freelancer status filtering, duplicate-request protection, the employer creation notification, and unrelated project/notification behavior.
++- Wrap state transitions in `transaction.atomic()` and lock the selected WorkRequest with `select_for_update()` before validating its current state.
++- Replace save-based freelancer status notifications with an `on_commit` notification for each actual transition; unchanged status saves do not notify. The existing employer creation notification remains.
++- Replace accepted WorkRequest filtering by numeric status ID in `project.views` and `rating.views` with the canonical `Схвалено` label.
++- Add focused lifecycle, authorization, filtering, notification, transaction, row-lock, migration-status, and duplicate-protection tests.
++
++## Human Manual Verification (Supplemental Evidence)
++
++The human reports manually reviewing the implemented behavior and finding it acceptable. The reported manual verification covered:
++
++- creating a new WorkRequest;
++- verifying its initial status is `В очікуванні`;
++- exercising valid transitions under the final HD-010 matrix;
++- verifying terminal behavior for `Схвалено` and `Відхилено`;
++- multiple WorkRequests attached to one project;
++- confirming Project status remains unchanged;
++- confirming project-owner authorization behavior;
++- confirming notifications are associated with actual status transitions;
++- employer/freelancer status filtering;
++- duplicate WorkRequest protection.
++
++This is supplemental human-reported evidence, not a substitute for the automated tests or independent Reviewer verification.
++
++## Acceptance Criteria Mapping
++
++- **AC-01 — Implemented.** Explicit initial label and order-independence test: `workrequest/views.py` (`INITIAL_STATUS`, `create_work_request`); `workrequest/tests.py::test_initial_status_is_selected_by_label_not_row_order`.
++- **AC-02 — Implemented.** Superseding HD-010 matrix: `workrequest/views.py::ALLOWED_TRANSITIONS`; all five valid transitions, including direct decisions from `В очікуванні`, are tested in `workrequest/tests.py::test_each_approved_transition_succeeds`.
++- **AC-03 — Implemented.** Rejected transitions return 400 without changing state: `workrequest/views.py::apply_work_request_status_transition`; `test_terminal_transitions_do_not_mutate` and `test_non_lifecycle_status_is_rejected_without_mutation`.
++- **AC-04 — Implemented.** Owner valid transitions: shared operation in `workrequest/views.py`; `test_each_approved_transition_succeeds` and `test_admin_mutation_uses_same_lifecycle_and_owner_authorization`.
++- **AC-05 — Implemented.** Non-owner is denied: shared operation ownership check; `test_owner_authorization_and_unauthorized_denial` and `test_admin_route_rejects_non_owner_project_change_and_anonymous_user`.
++- **AC-06 — Implemented.** No first-row status selection in application logic; explicit initial lookup and `test_initial_status_is_selected_by_label_not_row_order`.
++- **AC-07 — Implemented.** Lifecycle status lookups use canonical labels in `workrequest/views.py`; accepted-state queries use `Схвалено` in `project/views.py` and `rating/views.py`; migration creates `На розгляді`; `test_migration_provides_exactly_one_reviewing_status` and missing/ambiguous configuration test.
++- **AC-08 — Implemented against the final approved contract.** The earlier “approve one, reject others” proposal was superseded by approved OQ-05/OQ-06 and HD-009: no competing request is rejected or changed. Evidence: `test_only_selected_request_changes_and_project_status_is_unchanged`.
++- **AC-09 — Implemented.** Atomic selected-row transition and rollback behavior: `workrequest/views.py::apply_work_request_status_transition`; `test_rolled_back_transition_does_not_notify` and `test_transition_query_locks_the_selected_request_where_supported`.
++- **AC-10 — Implemented.** A status notification is scheduled only for an actual transition after commit: `workrequest/views.py::apply_work_request_status_transition`, `notification/signals.py::notify_freelancer_on_status_change`; notification test.
++- **AC-11 — Implemented.** Unchanged saves do not emit a status notification; `test_status_change_notification_occurs_once_only_for_real_transition`.
++- **AC-12 — Implemented.** Employer status filtering preserved; `test_owner_and_freelancer_status_filters_remain_available`.
++- **AC-13 — Implemented.** Freelancer status filtering preserved; `test_owner_and_freelancer_status_filters_remain_available`.
++- **AC-14 — Implemented.** Duplicate request guard preserved; `test_duplicate_work_request_protection_remains`.
++- **AC-15 — Implemented.** All five approved transition edges are exercised by `test_each_approved_transition_succeeds`.
++- **AC-16 — Implemented.** Transitions from terminal states and submission of a non-lifecycle status are rejected without mutation by `test_terminal_transitions_do_not_mutate` and `test_non_lifecycle_status_is_rejected_without_mutation`. Direct decisions from `В очікуванні` are valid under HD-010.
++- **AC-17 — Implemented.** Owner authorization is checked in the shared operation used by both mutation routes; ordinary and admin owner tests.
++- **AC-18 — Implemented.** Non-owner and unauthenticated denial tested on ordinary and admin routes; see authorization tests above.
++- **AC-19 — Implemented.** Only the selected request changes; competing approved and rejected requests remain unchanged; `test_only_selected_request_changes_and_project_status_is_unchanged`.
++- **AC-20 — Implemented.** Exactly-one notifications on real transitions, none on unchanged saves, and none on rollback; notification tests above.
++
++## Tests Added or Updated
++
++- `devopssite/workrequest/tests.py`: 15 focused lifecycle tests, including:
++  - initial status by explicit label and row-order independence;
++  - missing and ambiguous lifecycle status failures;
++  - migration-provided review status;
++  - all valid edges, including direct final decisions from the initial state, and invalid terminal-state/non-lifecycle transitions;
++  - owner, non-owner, and anonymous access;
++  - selected-only changes, competing request preservation, and unchanged Project status;
++  - exactly-once transition notifications, unchanged saves, and rollback;
++  - row-lock SQL verification where supported;
++  - employer/freelancer status filters and duplicate request protection;
++  - admin path lifecycle and authorization behavior.
++- Existing `project` tests were run as regression coverage; no test file changes were needed there.
++
++## Commands Executed
++
++- `git rev-parse HEAD`
++- `git status --short`
++- `git tag --points-at HEAD`
++- Read-only configured status-label queries using `..\venv\Scripts\python.exe manage.py shell ...`
++- `..\venv\Scripts\python.exe manage.py test workrequest adminpannel notification project rating --keepdb --verbosity 1`
++- `..\venv\Scripts\python.exe manage.py check`
++- `..\venv\Scripts\python.exe manage.py makemigrations --check --dry-run`
++- `..\venv\Scripts\python.exe manage.py showmigrations workrequest`
++- `git diff --check`
++
++## Test Results
++
++- Focused WorkRequest, admin-panel, notification, project, and rating suites: **20 tests passed** after applying the superseding HD-010 lifecycle.
++- Django system check: passed, no issues.
++- Migration drift check: passed, no model changes detected.
++- Patch whitespace check: passed.
++- `showmigrations workrequest` against the configured application database shows the new migration pending; it was intentionally not applied to that database. The test runner applied migrations to its test database and the migration status test passed.
++
++## Deviations
++
++None. The single migration file was an approved, bounded scope extension. No schema or model change was made.
++
++## Unfinished Work
++
++None within the approved implementation scope. The new data migration remains pending on the configured application database by design and should be applied through the normal deployment migration process. An unrelated pre-existing worktree change in `devopssite/freelancer/views.py` was left untouched and excluded from the CHANGE-002 implementation commit.
++
++## Final Implementation Version
++
++Commit:
++Pending until implementation commit is created
++
++Tag:
++Pending until implementation commit is tagged

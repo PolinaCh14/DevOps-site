@@ -1,0 +1,52 @@
+Initial repository baseline:
+git rev-parse HEAD
+Output: 43c0bc812a4d6ebba82cd72c29ab589782d5fedf
+
+git status --short
+Output at initial implementation start: empty
+
+git tag --points-at HEAD
+Output: change-002-builder-approved
+
+Configured database status-label verification, from devopssite/ using the project virtual environment:
+..\venv\Scripts\python.exe manage.py shell -c "from workrequest.models import WorkRequestStatus; from django.db.models import Count; [print(status.encode('unicode_escape').decode('ascii'), count) for status, count in WorkRequestStatus.objects.values_list('status').annotate(count=Count('id')).order_by('status')]"
+
+Output before applying the migration:
+\u0412 \u043e\u0447\u0456\u043a\u0443\u0432\u0430\u043d\u043d\u0456 1
+\u0412\u0456\u0434\u0445\u0438\u043b\u0435\u043d\u043e 1
+\u0421\u0445\u0432\u0430\u043b\u0435\u043d\u043e 1
+
+Focused automated tests:
+Set-Location .\devopssite
+..\venv\Scripts\python.exe manage.py test workrequest adminpannel notification project rating --keepdb --verbosity 1
+Result before HD-010: 19 tests passed.
+
+After the human-approved HD-010 optional-review decision and corresponding implementation/test update:
+Set-Location .\devopssite
+..\venv\Scripts\python.exe manage.py test workrequest adminpannel notification project rating --keepdb --verbosity 1
+Result: 20 tests passed.
+
+Django checks:
+Set-Location .\devopssite
+..\venv\Scripts\python.exe manage.py check
+Result: System check identified no issues.
+
+Set-Location .\devopssite
+..\venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+Result: No changes detected.
+
+Migration status, configured application database:
+Set-Location .\devopssite
+..\venv\Scripts\python.exe manage.py showmigrations workrequest
+Result:
+ [X] 0001_initial
+ [X] 0002_alter_workrequest_id_freelancer_and_more
+ [ ] 0003_ensure_reviewing_work_request_status
+
+The pending migration was intentionally not applied to the configured application database. The automated test runner applied the migration to its test database.
+
+Patch whitespace validation:
+git diff --check
+Result: passed.
+
+Git status and diff summary were checked after implementation. The human-approved change to decisions.md and previous experiment blocker evidence are preserved and not included in evidence/diff.patch.

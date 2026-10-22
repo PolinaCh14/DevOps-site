@@ -13,6 +13,9 @@ from project.models import Project, ProjectSkill, Status
 from skill.models import Skill
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseBadRequest
+from django.core.exceptions import ValidationError
+from django.views.decorators.http import require_http_methods
+from workrequest.views import apply_work_request_status_transition
 # Create your views here.
 
 
@@ -482,49 +485,31 @@ def all_work_request(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def update_work_request(request, work_request_id):
+    if request.method == 'POST':
+        status_id = request.POST.get('status')
+        project_id = request.POST.get('project')
+        if status_id is None or project_id is None:
+            return HttpResponseBadRequest("Статус і проєкт обов'язкові.")
+        try:
+            status_id = int(status_id)
+            project_id = int(project_id)
+            apply_work_request_status_transition(
+                user=request.user,
+                target_status_id=status_id,
+                work_request_id=work_request_id,
+                submitted_project_id=project_id,
+            )
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Невірний формат статусу або проєкту.")
+        except ValidationError as exc:
+            return HttpResponseBadRequest(str(exc))
+        return redirect('adminp:all_work_request_a')
+
     work_request = get_object_or_404(WorkRequest, id=work_request_id)
     statuses = WorkRequestStatus.objects.all()
     projects = Project.objects.all()
-
-    if request.method == 'POST':
-        status_id = int(request.POST.get('status'))
-        project_id = int(request.POST.get('project'))
-
-        old_status_id = work_request.id_status_id
-        old_project_id = work_request.id_project_id
-        freelancer_id = work_request.id_freelancer_id
-
-        if project_id != old_project_id:
-            work_request.id_project_id = project_id
-
-        if status_id != old_status_id:
-            work_request.id_status_id = status_id
-
-            if status_id == 2:
-                work_requests = WorkRequest.objects.filter(id_project=project_id)
-                for i in work_requests:
-                    if i.id_freelancer and i.id_freelancer.id == freelancer_id:
-                        i.id_status_id = 2
-                    else:
-                        i.id_status_id = 3
-                    i.save()
-
-                project = get_object_or_404(Project, id=project_id)
-                project.status_id = 2
-                project.save()
-
-            else:
-                try:
-                    wr = WorkRequest.objects.get(id_project=project_id, id_freelancer_id=freelancer_id)
-                    wr.id_status_id = status_id
-                    wr.save()
-                except WorkRequest.DoesNotExist:
-                    return HttpResponseBadRequest("Запит не знайдено.")
-
-        work_request.save()
-        return redirect('adminp:all_work_request_a')
-
     return render(request, 'update_work_request.html', {
         'work_request': work_request,
         'statuses': statuses,

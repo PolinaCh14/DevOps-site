@@ -41,3 +41,43 @@ Transitions to `на розгляді`, `схвалено`, or `відхилен
 Any future Project/WorkRequest status mapping requires a separate approved change.
 
 OQ-08 final decision supersedes the earlier accidental synchronization choice.
+
+## HD-009 — WorkRequest status label mapping
+
+Actual deployment labels are authoritative.
+
+Approved canonical labels:
+- `В очікуванні`
+- `На розгляді`
+- `Схвалено`
+- `Відхилено`
+
+Lifecycle:
+`В очікуванні → На розгляді → Схвалено | Відхилено`
+
+Existing labels are not renamed.
+`На розгляді` must be added through a reproducible repository-managed mechanism.
+
+Status:
+Approved by Human Reviewer.
+
+## HD-010 — Optional active-review stage
+
+This decision supersedes only the previously approved staged-only transition
+matrix in OQ-02 and the lifecycle summary in HD-009. The canonical status
+labels and all other approved OQ decisions remain unchanged.
+
+Approved lifecycle:
+- `В очікуванні` → `На розгляді`
+- `В очікуванні` → `Схвалено`
+- `В очікуванні` → `Відхилено`
+- `На розгляді` → `Схвалено`
+- `На розгляді` → `Відхилено`
+
+`На розгляді` is an optional, explicit project-owner active-review state.
+It is not assigned automatically at creation and is not required before a
+final decision. `Схвалено` and `Відхилено` remain terminal for ordinary
+project-owner actions.
+
+Status:
+Approved by Human Reviewer.
