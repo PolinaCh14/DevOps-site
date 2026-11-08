@@ -1,0 +1,40 @@
+name: Django tests
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DB_NAME: devops_ci
+      DB_USER: devops_ci
+      DB_PASSWORD: disposable-ci-password
+      DJANGO_SECRET_KEY: disposable-ci-secret-key
+      WEB_PORT: 8000
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build application image
+        run: docker compose build web
+
+      - name: Start application and wait for dependencies
+        run: docker compose up -d --wait
+
+      - name: Check Django, migrate, and run tests
+        run: >-
+          docker compose exec -T web sh -c
+          'python manage.py check &&
+          python manage.py migrate --noinput &&
+          python manage.py test'
+
+      - name: Clean up Docker resources
+        if: always()
+        run: docker compose down --volumes --remove-orphans
