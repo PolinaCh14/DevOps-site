@@ -1,7 +1,18 @@
+import io
+import json
+import os
+import tempfile
+import zipfile
+from contextlib import contextmanager
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import requests
 from django.test import TestCase, Client
 from django.urls import reverse
 from users.models import User, Role
 from .models import Freelancer, Portfolio, FreelancerStatus, FreelancerSkill
+from . import utils as resume_utils
 from skill.models import Skill
 from project.models import Project, Status as ProjectStatus
 from rating.models import Rating
@@ -372,3 +383,633 @@ class PortfolioViewTests(TestCase):
         response = self.client.get(reverse('freelancers:get_user_portfolio', args=[portfolio.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'My Portfolio')
+
+
+def valid_resume_analysis():
+    return {
+        "summary": "Підсумок кандидата",
+        "detected_skills": [{"name": "Python", "evidence": "Згадано Python."}],
+        "strengths": [{"strength": "Послідовність", "evidence": "Описано досвід."}],
+        "improvement_areas": [{"area": "Результати", "rationale": "Не наведено метрик."}],
+        "recommendations": ["Додайте вимірювані результати."],
+    }
+
+
+def docx_bytes():
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("word/document.xml", "<document/>")
+    return output.getvalue()
+
+
+class MockDriveResponse:
+    def __init__(self, content, mime, filename="", status=200, cookies=None):
+        self.content = content
+        self.status_code = status
+        self.headers = {"Content-Type": mime}
+        if filename:
+            self.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        self.cookies = cookies or {}
+        self.closed = False
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError("sensitive provider detail")
+
+    def iter_content(self, chunk_size):
+        yield self.content
+
+    def close(self):
+        self.closed = True
+
+
+class ResumeSchemaTests(TestCase):
+    def test_valid_payload_has_exact_keys_and_trims_strings(self):
+        payload = valid_resume_analysis()
+        payload["summary"] = "  " + payload["summary"] + "  "
+        payload["detected_skills"][0]["name"] = " Python "
+        result = resume_utils.validate_structured_response(json.dumps(payload))
+        self.assertEqual(set(result), {
+            "summary", "detected_skills", "strengths",
+            "improvement_areas", "recommendations",
+        })
+        self.assertEqual(result["summary"], "Підсумок кандидата")
+        self.assertEqual(result["detected_skills"][0]["name"], "Python")
+        self.assertNotIn("score", result)
+
+    def test_boundary_lengths_and_maximum_item_counts_are_accepted(self):
+        payload = {
+            "summary": "x" * 1000,
+            "detected_skills": [
+                {
+                    "name": f"{index}" + "n" * (100 - len(str(index))),
+                    "evidence": "e" * 500,
+                }
+                for index in range(20)
+            ],
+            "strengths": [
+                {"strength": f"s{i}" + "x" * 298, "evidence": "e" * 500}
+                for i in range(10)
+            ],
+            "improvement_areas": [
+                {"area": f"a{i}" + "x" * 298, "rationale": "r" * 500}
+                for i in range(10)
+            ],
+            "recommendations": [f"{i}" + "r" * 499 for i in range(10)],
+        }
+        self.assertEqual(
+            resume_utils.validate_structured_response(json.dumps(payload)),
+            payload,
+        )
+
+    def test_empty_arrays_are_valid(self):
+        payload = valid_resume_analysis()
+        for key in ("detected_skills", "strengths", "improvement_areas", "recommendations"):
+            payload[key] = []
+        self.assertEqual(
+            resume_utils.validate_structured_response(json.dumps(payload)),
+            payload,
+        )
+
+    def test_invalid_json_and_exact_key_policy_are_rejected(self):
+        valid = valid_resume_analysis()
+        invalid_responses = [
+            "{",
+            json.dumps(valid) + " trailing",
+            "```json\n" + json.dumps(valid) + "\n```",
+            json.dumps(valid).replace('"summary":', '"extra": 1, "summary":', 1),
+            '{"summary":"a","summary":"b","detected_skills":[],"strengths":[],'
+            '"improvement_areas":[],"recommendations":[]}',
+            json.dumps(valid).replace('"summary":', '"missing":', 1),
+            json.dumps(valid).replace(
+                json.dumps(valid["summary"]), "NaN"
+            ),
+        ]
+        for raw in invalid_responses:
+            with self.subTest(raw=raw[:40]):
+                with self.assertRaises(resume_utils.InvalidStructuredResponse):
+                    resume_utils.validate_structured_response(raw)
+
+    def test_wrong_types_nested_keys_blank_and_control_characters_are_rejected(self):
+        invalid_payloads = []
+        for key, wrong in (
+            ("summary", None),
+            ("summary", 4),
+            ("detected_skills", {}),
+            ("strengths", [None]),
+            ("improvement_areas", [{"area": "a", "rationale": "r", "extra": "x"}]),
+            ("recommendations", [True]),
+        ):
+            payload = valid_resume_analysis()
+            payload[key] = wrong
+            invalid_payloads.append(payload)
+
+        payload = valid_resume_analysis()
+        payload["detected_skills"][0].pop("evidence")
+        invalid_payloads.append(payload)
+        payload = valid_resume_analysis()
+        payload["summary"] = " \t "
+        invalid_payloads.append(payload)
+        payload = valid_resume_analysis()
+        payload["summary"] = "contains\u0001control"
+        invalid_payloads.append(payload)
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                with self.assertRaises(resume_utils.InvalidStructuredResponse):
+                    resume_utils.validate_structured_response(json.dumps(payload))
+
+    def test_over_limit_values_and_duplicate_items_are_rejected(self):
+        cases = []
+        for key, value in (
+            ("summary", "x" * 1001),
+            ("detected_skills", [
+                {"name": f"n{i}", "evidence": "e"} for i in range(21)
+            ]),
+            ("strengths", [
+                {"strength": f"s{i}", "evidence": "e"} for i in range(11)
+            ]),
+            ("improvement_areas", [
+                {"area": f"a{i}", "rationale": "r"} for i in range(11)
+            ]),
+            ("recommendations", [f"r{i}" for i in range(11)]),
+        ):
+            payload = valid_resume_analysis()
+            payload[key] = value
+            cases.append(payload)
+
+        for key, item_key, maximum, other_key in (
+            ("detected_skills", "name", 100, "evidence"),
+            ("strengths", "strength", 300, "evidence"),
+            ("improvement_areas", "area", 300, "rationale"),
+        ):
+            payload = valid_resume_analysis()
+            payload[key] = [{item_key: "x" * (maximum + 1), other_key: "e"}]
+            cases.append(payload)
+
+        for key, item_key, other_key, maximum in (
+            ("detected_skills", "name", "evidence", 500),
+            ("strengths", "strength", "evidence", 500),
+            ("improvement_areas", "area", "rationale", 500),
+        ):
+            payload = valid_resume_analysis()
+            payload[key] = [{item_key: "x", other_key: "e" * (maximum + 1)}]
+            cases.append(payload)
+
+        payload = valid_resume_analysis()
+        payload["recommendations"] = ["r" * 501]
+        cases.append(payload)
+        payload = valid_resume_analysis()
+        payload["detected_skills"] = [
+            {"name": " Python  Developer ", "evidence": "e"},
+            {"name": "python developer", "evidence": "different"},
+        ]
+        cases.append(payload)
+        payload = valid_resume_analysis()
+        payload["strengths"] = [
+            {"strength": "Strong delivery", "evidence": "e"},
+            {"strength": " strong   delivery ", "evidence": "other"},
+        ]
+        cases.append(payload)
+        payload = valid_resume_analysis()
+        payload["improvement_areas"] = [
+            {"area": "Results", "rationale": "r"},
+            {"area": " results ", "rationale": "other"},
+        ]
+        cases.append(payload)
+        payload = valid_resume_analysis()
+        payload["recommendations"] = ["Improve CV", " improve   cv "]
+        cases.append(payload)
+
+        for payload in cases:
+            with self.subTest(payload=payload):
+                with self.assertRaises(resume_utils.InvalidStructuredResponse):
+                    resume_utils.validate_structured_response(json.dumps(payload))
+
+
+class ResumeUtilityTests(TestCase):
+    def test_drive_download_identifies_pdf_and_docx_and_sets_timeouts(self):
+        cases = (
+            (b"%PDF-1.7\ncontent", "application/pdf", "resume.pdf", ".pdf"),
+            (
+                docx_bytes(),
+                resume_utils.DOCX_MIME,
+                "resume.docx",
+                ".docx",
+            ),
+        )
+        for content, mime, filename, expected_suffix in cases:
+            with self.subTest(expected_suffix=expected_suffix):
+                response = MockDriveResponse(content, mime, filename)
+                session = Mock()
+                session.get.return_value = response
+                with patch("freelancer.utils.requests.Session", return_value=session):
+                    with tempfile_test_path() as destination:
+                        suffix = resume_utils.download_from_google_drive(
+                            "drive-id", destination
+                        )
+                self.assertEqual(suffix, expected_suffix)
+                session.get.assert_called_once_with(
+                    "https://drive.google.com/uc?export=download",
+                    params={"id": "drive-id"},
+                    stream=True,
+                    timeout=(5, 30),
+                )
+                self.assertTrue(response.closed)
+                session.close.assert_called_once()
+
+    def test_download_warning_confirmation_is_protocol_not_retry(self):
+        first = MockDriveResponse(
+            b"", "application/octet-stream", cookies={"download_warning_xyz": "token"}
+        )
+        confirmed = MockDriveResponse(b"%PDF-1.7", "application/pdf")
+        session = Mock()
+        session.get.side_effect = [first, confirmed]
+        with patch("freelancer.utils.requests.Session", return_value=session):
+            with tempfile_test_path() as destination:
+                suffix = resume_utils.download_from_google_drive("drive-id", destination)
+        self.assertEqual(suffix, ".pdf")
+        self.assertEqual(session.get.call_count, 2)
+        self.assertEqual(session.get.call_args_list[1].kwargs["params"], {
+            "id": "drive-id", "confirm": "token",
+        })
+        self.assertTrue(first.closed)
+        self.assertTrue(confirmed.closed)
+
+    def test_analysis_uses_validated_suffix_for_matching_extractor(self):
+        payload = valid_resume_analysis()
+        for extension, content in ((".pdf", b"%PDF-"), (".docx", docx_bytes())):
+            with self.subTest(extension=extension):
+                def download(_file_id, destination):
+                    with open(destination, "wb") as file:
+                        file.write(content)
+                    return extension
+
+                with patch("freelancer.utils.download_from_google_drive", side_effect=download), \
+                        patch("freelancer.utils.read_file", return_value="sample resume") as reader, \
+                        patch("freelancer.utils._analyze_text", return_value=payload):
+                    result = resume_utils.analyze_resume(
+                        "https://drive.google.com/file/d/file-id/view", 17
+                    )
+                self.assertTrue(reader.call_args.args[0].endswith(extension))
+                self.assertEqual(result, payload)
+
+    def test_drive_http_timeout_network_invalid_and_mismatched_content_stop(self):
+        scenarios = (
+            ("HTTP", MockDriveResponse(b"", "application/pdf", status=503)),
+            ("timeout", requests.Timeout("private timeout detail")),
+            ("network", requests.ConnectionError("private network detail")),
+            ("html", MockDriveResponse(
+                b"<!DOCTYPE html><html><body>Access denied</body></html>",
+                "application/octet-stream",
+            )),
+            ("unsupported", MockDriveResponse(b"not a document", "text/plain", "resume.txt")),
+            ("mismatch", MockDriveResponse(
+                docx_bytes(), "application/pdf", "resume.pdf"
+            )),
+        )
+        for label, outcome in scenarios:
+            with self.subTest(label=label):
+                session = Mock()
+                if isinstance(outcome, Exception):
+                    session.get.side_effect = outcome
+                else:
+                    session.get.return_value = outcome
+                with patch("freelancer.utils.requests.Session", return_value=session), \
+                        patch("freelancer.utils._analyze_text") as analyze:
+                    with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                        resume_utils.analyze_resume(
+                            "https://drive.google.com/file/d/file-id/view", 17
+                        )
+                expected = (
+                    "resume_file_invalid"
+                    if label in {"unsupported", "mismatch"}
+                    else "resume_retrieval_failed"
+                )
+                self.assertEqual(raised.exception.code, expected)
+                self.assertEqual(session.get.call_count, 1)
+                analyze.assert_not_called()
+
+    def test_invalid_reference_stops_before_drive(self):
+        with patch("freelancer.utils.requests.Session") as session, \
+                patch("freelancer.utils._analyze_text") as analyze:
+            with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                resume_utils.analyze_resume("not a drive link", 1)
+        self.assertEqual(raised.exception.code, "resume_reference_invalid")
+        session.assert_not_called()
+        analyze.assert_not_called()
+
+    def test_extraction_exception_and_empty_text_stop_before_ai(self):
+        for extracted, expected in (
+            (ValueError("private parser exception"), "resume_extraction_failed"),
+            (" \n\t ", "resume_text_empty"),
+        ):
+            with self.subTest(expected=expected):
+                def download(_file_id, destination):
+                    with open(destination, "wb") as file:
+                        file.write(b"%PDF-")
+                    return ".pdf"
+
+                with patch("freelancer.utils.download_from_google_drive", side_effect=download), \
+                        patch("freelancer.utils.read_file", side_effect=extracted), \
+                        patch("freelancer.utils._analyze_text") as analyze:
+                    with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                        resume_utils.analyze_resume(
+                            "https://drive.google.com/file/d/file-id/view", 17
+                        )
+                self.assertEqual(raised.exception.code, expected)
+                analyze.assert_not_called()
+
+    def test_model_repair_retry_only_for_invalid_received_schema(self):
+        valid = json.dumps(valid_resume_analysis(), ensure_ascii=False)
+        for responses, expected_calls, error_code in (
+            ([valid], 1, None),
+            (["invalid JSON", valid], 2, None),
+            (["invalid JSON", "{}"], 2, "analysis_invalid_response"),
+        ):
+            with self.subTest(expected_calls=expected_calls, error_code=error_code):
+                client = Mock()
+                client.chat.completions.create.side_effect = [
+                    SimpleNamespace(
+                        choices=[SimpleNamespace(
+                            message=SimpleNamespace(content=text)
+                        )]
+                    )
+                    for text in responses
+                ]
+                with patch("freelancer.utils.OpenAI", return_value=client) as factory, \
+                        patch.dict(os.environ, {
+                            "API_KEY": "test-key",
+                            "OPEN_AI_BASE_URL": "https://provider.invalid",
+                            "AI_MODEL": "test-model",
+                        }):
+                    if error_code:
+                        with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                            resume_utils._analyze_text("test resume")
+                        self.assertEqual(raised.exception.code, error_code)
+                    else:
+                        self.assertEqual(
+                            resume_utils._analyze_text("test resume"),
+                            valid_resume_analysis(),
+                        )
+                self.assertEqual(client.chat.completions.create.call_count, expected_calls)
+                factory.assert_called_once()
+                self.assertEqual(factory.call_args.kwargs["timeout"], 30.0)
+                self.assertEqual(factory.call_args.kwargs["max_retries"], 0)
+                self.assertEqual(
+                    client.chat.completions.create.call_args_list[0].kwargs["timeout"],
+                    30.0,
+                )
+
+    def test_provider_timeout_and_service_failures_are_not_retried(self):
+        from openai import APITimeoutError, OpenAIError
+
+        for exception, expected in (
+            (APITimeoutError(request=Mock()), "analysis_provider_timeout"),
+            (OpenAIError("private provider detail"), "analysis_unavailable"),
+        ):
+            with self.subTest(expected=expected):
+                client = Mock()
+                client.chat.completions.create.side_effect = exception
+                with patch("freelancer.utils.OpenAI", return_value=client), \
+                        patch.dict(os.environ, {
+                            "API_KEY": "test-key",
+                            "OPEN_AI_BASE_URL": "https://provider.invalid",
+                            "AI_MODEL": "test-model",
+                        }):
+                    with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                        resume_utils._analyze_text("test resume")
+                self.assertEqual(raised.exception.code, expected)
+                client.chat.completions.create.assert_called_once()
+
+    def test_provider_failure_during_repair_does_not_trigger_a_third_call(self):
+        from openai import APITimeoutError
+
+        client = Mock()
+        client.chat.completions.create.side_effect = [
+            SimpleNamespace(choices=[
+                SimpleNamespace(message=SimpleNamespace(content="invalid"))
+            ]),
+            APITimeoutError(request=Mock()),
+        ]
+        with patch("freelancer.utils.OpenAI", return_value=client), \
+                patch.dict(os.environ, {
+                    "API_KEY": "test-key",
+                    "OPEN_AI_BASE_URL": "https://provider.invalid",
+                    "AI_MODEL": "test-model",
+                }):
+            with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                resume_utils._analyze_text("test resume")
+        self.assertEqual(raised.exception.code, "analysis_provider_timeout")
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+
+    def test_missing_provider_configuration_does_not_create_client(self):
+        with patch("freelancer.utils.OpenAI") as factory, \
+                patch.dict(os.environ, {
+                    "API_KEY": "",
+                    "OPEN_AI_BASE_URL": "",
+                    "AI_MODEL": "",
+                }):
+            with self.assertRaises(resume_utils.ResumeAnalysisError) as raised:
+                resume_utils._analyze_text("test resume")
+        self.assertEqual(raised.exception.code, "analysis_unavailable")
+        factory.assert_not_called()
+
+
+class ResumeAnalysisViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        role = Role.objects.create(id=2)
+        self.user = User.objects.create_user(
+            email="resume-owner@example.com",
+            password="test123",
+            role=role,
+            name="Resume",
+            surname="Owner",
+            phone="1234567890",
+        )
+        self.other_user = User.objects.create_user(
+            email="other-owner@example.com",
+            password="test123",
+            role=role,
+            name="Other",
+            surname="Owner",
+            phone="1234567891",
+        )
+        self.status = FreelancerStatus.objects.create(status="active")
+        self.freelancer = Freelancer.objects.create(
+            id_user=self.user,
+            cv="https://drive.google.com/file/d/owned-id/view",
+            experience=2,
+            id_status=self.status,
+        )
+        self.other_freelancer = Freelancer.objects.create(
+            id_user=self.other_user,
+            cv="https://drive.google.com/file/d/other-id/view",
+            experience=3,
+            id_status=self.status,
+        )
+        self.url = reverse("freelancers:analyze_resume")
+
+    def test_unauthenticated_get_redirects_and_post_returns_exact_401(self):
+        get_response = self.client.get(self.url)
+        self.assertEqual(get_response.status_code, 302)
+        self.assertTrue(get_response["Location"].startswith("/users/login/"))
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {
+            "error": {
+                "code": "authentication_required",
+                "message": "Увійдіть, щоб аналізувати резюме.",
+            },
+        })
+        response = self.client.put(self.url)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.json()["error"]["code"], "method_not_allowed")
+
+    def test_owner_success_and_foreign_profile_selector_cannot_change_source(self):
+        self.client.force_login(self.user)
+        analysis = valid_resume_analysis()
+        with patch("freelancer.views.analyze_resume", return_value=analysis) as analyze:
+            response = self.client.post(self.url, {"freelancer_id": self.other_freelancer.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"analysis": analysis})
+        analyze.assert_called_once_with(self.freelancer.cv, self.freelancer.id)
+
+    def test_no_profile_get_and_post_have_controlled_behavior(self):
+        self.client.force_login(User.objects.create_user(
+            email="without-profile@example.com",
+            password="test123",
+            role=self.user.role,
+            name="No",
+            surname="Profile",
+            phone="1234567892",
+        ))
+        get_response = self.client.get(self.url)
+        self.assertEqual(get_response.status_code, 200)
+        self.assertContains(get_response, "Профіль фрілансера не знайдено.")
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {
+            "error": {
+                "code": "freelancer_profile_not_found",
+                "message": "Профіль фрілансера не знайдено.",
+            },
+        })
+
+    def test_missing_cv_and_unsupported_method_have_exact_errors(self):
+        self.client.force_login(self.user)
+        self.freelancer.cv = ""
+        self.freelancer.save()
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {
+            "error": {
+                "code": "resume_reference_missing",
+                "message": "Додайте посилання на резюме у своєму профілі.",
+            },
+        })
+        self.freelancer.cv = " \n\t "
+        self.freelancer.save()
+        get_response = self.client.get(self.url)
+        self.assertContains(get_response, "Ви ще не додали посилання на своє резюме.")
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"]["code"], "resume_reference_missing")
+        self.freelancer.cv = ""
+        self.freelancer.save()
+        response = self.client.put(self.url)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.json(), {
+            "error": {
+                "code": "method_not_allowed",
+                "message": "Ця дія не підтримується.",
+            },
+        })
+
+    def test_service_errors_are_safe_and_preserve_specified_status(self):
+        self.client.force_login(self.user)
+        failures = (
+            ("resume_retrieval_failed", 502,
+             "Не вдалося отримати резюме з Google Drive. Перевірте доступ до посилання та спробуйте ще раз."),
+            ("resume_file_invalid", 422,
+             "Файл резюме не вдалося перевірити. Завантажте коректний файл PDF або DOCX."),
+            ("resume_extraction_failed", 422,
+             "Не вдалося прочитати текст резюме. Перевірте файл PDF або DOCX і спробуйте ще раз."),
+            ("resume_text_empty", 422,
+             "У резюме не знайдено тексту для аналізу. Перевірте файл і спробуйте ще раз."),
+            ("analysis_invalid_response", 502,
+             "Не вдалося сформувати коректний аналіз. Спробуйте ще раз пізніше."),
+            ("analysis_provider_timeout", 504,
+             "Сервіс аналізу не відповідає. Спробуйте ще раз пізніше."),
+            ("analysis_unavailable", 503,
+             "Аналіз резюме тимчасово недоступний. Спробуйте ще раз пізніше."),
+            ("analysis_failed", 500,
+             "Не вдалося виконати аналіз. Спробуйте ще раз пізніше."),
+        )
+        for code, status, message in failures:
+            with self.subTest(code=code):
+                with patch(
+                    "freelancer.views.analyze_resume",
+                    side_effect=resume_utils.ResumeAnalysisError(code),
+                ):
+                    response = self.client.post(self.url)
+                self.assertEqual(response.status_code, status)
+                self.assertEqual(response.json(), {
+                    "error": {"code": code, "message": message},
+                })
+
+    def test_unexpected_exception_details_are_not_returned(self):
+        self.client.force_login(self.user)
+        with patch(
+            "freelancer.views.analyze_resume",
+            side_effect=RuntimeError("private CV and provider data"),
+        ):
+            response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json(), {
+            "error": {
+                "code": "analysis_failed",
+                "message": "Не вдалося виконати аналіз. Спробуйте ще раз пізніше.",
+            },
+        })
+        self.assertNotIn("private CV and provider data", response.content.decode())
+
+    def test_html_like_model_text_is_returned_as_data_and_template_uses_text(self):
+        self.client.force_login(self.user)
+        analysis = valid_resume_analysis()
+        hostile_text = "<img src=x onerror=alert(1)> **not markup**"
+        analysis["summary"] = hostile_text
+        with patch("freelancer.views.analyze_resume", return_value=analysis):
+            response = self.client.post(self.url)
+        self.assertEqual(response.json(), {"analysis": analysis})
+        page = self.client.get(self.url)
+        self.assertNotContains(page, "innerHTML")
+        self.assertContains(page, "textContent")
+        self.assertContains(page, "replaceChildren")
+
+    def test_each_trigger_runs_fresh_analysis_without_persisting_results(self):
+        self.client.force_login(self.user)
+        count_before = Freelancer.objects.count()
+        with patch(
+            "freelancer.views.analyze_resume",
+            return_value=valid_resume_analysis(),
+        ) as analyze:
+            first = self.client.post(self.url)
+            second = self.client.post(self.url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(analyze.call_count, 2)
+        self.assertEqual(Freelancer.objects.count(), count_before)
+        self.freelancer.refresh_from_db()
+        self.assertEqual(
+            self.freelancer.cv,
+            "https://drive.google.com/file/d/owned-id/view",
+        )
+
+
+@contextmanager
+def tempfile_test_path():
+    with tempfile.TemporaryDirectory() as directory:
+        yield os.path.join(directory, "resume")

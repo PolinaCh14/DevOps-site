@@ -7,7 +7,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Аналіз Резюме</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
             color: white;
@@ -56,7 +55,9 @@
 <div class="centered">
     <h2>Аналіз резюме</h2>
 
-    {% if has_cv %}
+    {% if profile_missing %}
+        <p>Профіль фрілансера не знайдено.</p>
+    {% elif has_cv %}
         <p>Ваше резюме знайдено. Натисніть кнопку нижче, щоб запустити аналіз:</p>
         <form method="post" id="analyze-form">
             {% csrf_token %}
@@ -69,26 +70,97 @@
 </div>
 
 <script>
-document.getElementById('analyze-form')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
+const analyzeForm = document.getElementById('analyze-form');
+if (analyzeForm) {
+    analyzeForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const button = analyzeForm.querySelector('button[type="submit"]');
+        const resultDiv = document.getElementById('result');
+        const csrfToken = analyzeForm.querySelector(
+            'input[name="csrfmiddlewaretoken"]'
+        ).value;
+        button.disabled = true;
+        resultDiv.replaceChildren();
+        resultDiv.style.color = 'white';
 
-    const response = await fetch('', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
+        try {
+            const response = await fetch('', {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                resultDiv.textContent = data.error && data.error.message
+                    ? data.error.message
+                    : 'Не вдалося виконати аналіз. Спробуйте ще раз пізніше.';
+                resultDiv.style.color = 'red';
+                return;
+            }
+            renderAnalysis(data.analysis, resultDiv);
+        } catch (_error) {
+            resultDiv.textContent = 'Не вдалося виконати аналіз. Спробуйте ще раз пізніше.';
+            resultDiv.style.color = 'red';
+        } finally {
+            button.disabled = false;
         }
     });
+}
 
-    const data = await response.json();
-    const resultDiv = document.getElementById('result');
+function appendSection(container, title, values, formatValue) {
+    const section = document.createElement('section');
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    section.appendChild(heading);
 
-    if (data.analysis) {
-        resultDiv.innerHTML = data.analysis;
+    if (Array.isArray(values)) {
+        const list = document.createElement('ul');
+        values.forEach(function(value) {
+            const item = document.createElement('li');
+            item.textContent = formatValue(value);
+            list.appendChild(item);
+        });
+        section.appendChild(list);
     } else {
-        resultDiv.textContent = data.error;
-        resultDiv.style.color = 'red';
+        const paragraph = document.createElement('p');
+        paragraph.textContent = values;
+        section.appendChild(paragraph);
     }
-});
+    container.appendChild(section);
+}
+
+function renderAnalysis(analysis, container) {
+    if (!analysis || typeof analysis !== 'object') {
+        container.textContent = 'Не вдалося виконати аналіз. Спробуйте ще раз пізніше.';
+        container.style.color = 'red';
+        return;
+    }
+
+    appendSection(container, 'Підсумок', analysis.summary);
+    appendSection(
+        container,
+        'Виявлені навички',
+        analysis.detected_skills,
+        function(item) { return item.name + ' — ' + item.evidence; }
+    );
+    appendSection(
+        container,
+        'Сильні сторони',
+        analysis.strengths,
+        function(item) { return item.strength + ' — ' + item.evidence; }
+    );
+    appendSection(
+        container,
+        'Напрями покращення',
+        analysis.improvement_areas,
+        function(item) { return item.area + ' — ' + item.rationale; }
+    );
+    appendSection(
+        container,
+        'Рекомендації',
+        analysis.recommendations,
+        function(item) { return item; }
+    );
+}
 </script>
 
 </body>

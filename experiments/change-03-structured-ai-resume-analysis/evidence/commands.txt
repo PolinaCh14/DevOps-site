@@ -1,0 +1,22 @@
+CHANGE-003 Implementer verification commands
+============================================
+
+Working tree: repository root D:\piton\practice\DevOps-site
+Prepared environment: ..\venv\Scripts\python.exe
+
+1. Focused freelancer tests (working directory: devopssite)
+   ..\venv\Scripts\python.exe manage.py test freelancer.tests --keepdb
+
+2. Django system check (working directory: devopssite)
+   ..\venv\Scripts\python.exe manage.py check
+
+3. Patch whitespace validation (working directory: repository root)
+   git diff --check
+
+4. Final implementation patch capture (working directory: repository root)
+   git --no-pager diff --binary -- devopssite/freelancer/tests.py
+     devopssite/freelancer/utils.py
+     devopssite/freelancer/views.py
+     devopssite/templates/analyze_resume.html
+   Output saved as evidence/diff.patch. The patch excludes evidence/report
+   files and includes only the four approved implementation files.

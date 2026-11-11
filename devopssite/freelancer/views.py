@@ -1,14 +1,14 @@
 from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
 from .models import Freelancer, FreelancerStatus, FreelancerSkill, Portfolio
 from skill.models import Skill
 from users.models import User
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.db.models import Avg, Count, F, Q
 from rating.utils import get_average_rating_for_user
-from django.http import JsonResponse, request
-from .utils import analyze_resume
-import markdown
+from django.http import JsonResponse
+from .utils import ERRORS, ResumeAnalysisError, analyze_resume
 
 
 def get_all_portfolio(request, freelancer_id):
@@ -373,34 +373,67 @@ def delete_portfolio_item(request, item_id):
 
 
 
-def render_resume_feedback(raw_markdown):
-    html = markdown.markdown(raw_markdown, extensions=['fenced_code'])
-    return html
+RESUME_VIEW_ERRORS = {
+    "authentication_required": (
+        401, "Увійдіть, щоб аналізувати резюме."
+    ),
+    "freelancer_profile_not_found": (
+        404, "Профіль фрілансера не знайдено."
+    ),
+    "resume_reference_missing": (
+        400, "Додайте посилання на резюме у своєму профілі."
+    ),
+    "method_not_allowed": (
+        405, "Ця дія не підтримується."
+    ),
+}
 
 
-@login_required
+def _resume_error_response(code, status=None):
+    error_status, message = (
+        RESUME_VIEW_ERRORS[code] if code in RESUME_VIEW_ERRORS else ERRORS[code]
+    )
+    return JsonResponse({
+        "error": {
+            "code": code,
+            "message": message,
+        },
+    }, status=status or error_status)
+
+
 def analyze_resume_view(request):
-    freelancer = get_object_or_404(Freelancer, id_user=request.user)
+    if request.method not in {"GET", "POST"}:
+        return _resume_error_response("method_not_allowed")
+
+    if not request.user.is_authenticated:
+        if request.method == "POST":
+            return _resume_error_response("authentication_required")
+        return redirect_to_login(request.get_full_path())
+
+    freelancer = Freelancer.objects.filter(id_user=request.user).first()
+    if freelancer is None:
+        if request.method == "POST":
+            return _resume_error_response("freelancer_profile_not_found")
+        return render(request, "analyze_resume.html", {
+            "freelancer": None,
+            "has_cv": False,
+            "profile_missing": True,
+        })
 
     if request.method == "POST":
-        pass
-        cv_url = freelancer.cv
-        if not cv_url:
-            return JsonResponse({"error": "CV не знайдено."}, status=400)
-
+        if not freelancer.cv or not freelancer.cv.strip():
+            return _resume_error_response("resume_reference_missing")
         try:
-            analysis_result = analyze_resume(cv_url, int(freelancer.id))
-            rendered_html = render_resume_feedback(analysis_result)
-            return JsonResponse({"analysis": rendered_html})
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            analysis_result = analyze_resume(freelancer.cv, freelancer.id)
+            return JsonResponse({"analysis": analysis_result})
+        except ResumeAnalysisError as error:
+            return _resume_error_response(error.code, error.status)
+        except Exception:
+            return _resume_error_response("analysis_failed")
 
-    # GET-запит
-    has_cv = bool(freelancer.cv)
-    return render(request, 'analyze_resume.html', {
-        'freelancer': freelancer,
-        'has_cv': has_cv,
+    return render(request, "analyze_resume.html", {
+        "freelancer": freelancer,
+        "has_cv": bool(freelancer.cv and freelancer.cv.strip()),
+        "profile_missing": False,
     })
-
-
 
