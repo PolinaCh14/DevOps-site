@@ -1,0 +1,31 @@
+CHANGE-003 independent Reviewer commands
+=========================================
+
+Repository root:
+  D:\piton\practice\DevOps-site
+
+Pre-review state (captured before examining implementation):
+  git rev-parse HEAD
+    08f4f2226be17891c240e9173ac34b2467ad9a37
+  git status --short
+    [no output; clean]
+  git tag --points-at HEAD
+    change-003-implemented
+
+Review scope and diff inspection:
+  git diff --stat change-003-builder-approved..change-003-implemented
+  git diff --name-status change-003-builder-approved..change-003-implemented
+  git --no-pager diff --unified=30 change-003-builder-approved..change-003-implemented -- devopssite/freelancer/views.py devopssite/templates/analyze_resume.html
+  git --no-pager diff --unified=20 change-003-builder-approved..change-003-implemented -- devopssite/freelancer/utils.py
+
+Independent verification:
+  Working directory: D:\piton\practice\DevOps-site\devopssite
+  ..\venv\Scripts\python.exe manage.py test freelancer.tests --keepdb
+  ..\venv\Scripts\python.exe manage.py check
+  python manage.py check
+
+  Working directory: D:\piton\practice\DevOps-site
+  git diff --check change-003-builder-approved..change-003-implemented
+  git diff --check change-003-builder-approved..change-003-implemented -- devopssite/freelancer/utils.py devopssite/freelancer/views.py devopssite/freelancer/tests.py devopssite/templates/analyze_resume.html
+
+No application code was changed during review.
